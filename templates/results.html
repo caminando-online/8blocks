@@ -38,6 +38,12 @@
                     <li>{{ key }}: ${{ value }}</li>
                     {% endfor %}
                 </ul>
+                <h3>OPEX Breakdown</h3>
+                <ul>
+                    {% for key, value in results.opex_breakdown.items() %}
+                    <li>{{ key }}: ${{ value }}</li>
+                    {% endfor %}
+                </ul>
                 <h3>ASICs Configuration</h3>
                 <p>Total Hashrate: {{ results.total_asic_hashrate }} TH/s</p>
                 <p>Total ASIC Cost: ${{ results.total_asic_cost }}</p>

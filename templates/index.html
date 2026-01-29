@@ -20,9 +20,9 @@
     <div class="container mt-5">
         <h1>Bitcoin Mining Farm Business Model Calculator</h1>
         <form method="POST">
+            <!-- CAPEX -->
             <div class="row">
-                <!-- CAPEX -->
-                <div class="col-md-4 mb-4">
+                <div class="col-12 mb-4">
                     <div class="card h-100">
                         <div class="card-header">
                             <h5>CAPEX (Capital Expenditures)</h5>
@@ -72,8 +72,9 @@
                     </div>
                 </div>
 
+                <div class="row">
                 <!-- ASICs (details) -->
-                <div class="col-md-8 mb-4">
+                <div class="col-12 mb-4">
                     <div class="card h-100">
                         <div class="card-header">
                             <h5>ASICs (Details)</h5>
@@ -98,11 +99,11 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="row">
+                </div>
+                <div class="row">
                 <!-- Electricity -->
-                <div class="col-md-4 mb-4">
+                <div class="col-12 mb-4">
                     <div class="card h-100">
                         <div class="card-header">
                             <h5>Electricity</h5>
@@ -111,54 +112,82 @@
                             <div class="mb-3">
                                 <label for="power_source" class="form-label">Power Source</label>
                                 <select class="form-control" id="power_source" name="power_source" onchange="togglePowerSource()">
+                                    <option value="">--select--</option>
                                     <option value="Direct Energy">Direct Energy</option>
                                     <option value="Gas powered">Gas powered</option>
                                 </select>
                             </div>
-                            <div id="direct_energy_fields">
-                                <div class="mb-3">
-                                    <label for="energy_cost_per_mwh" class="form-label">Energy Cost ($/MWh)</label>
-                                    <input type="number" step="0.01" class="form-control" id="energy_cost_per_mwh" name="energy_cost_per_mwh" required>
-                                </div>
+                            <div id="direct_energy_fields" style="visibility: hidden">
                             </div>
-                            <div id="gas_powered_fields" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="gas_price_per_mbtu" class="form-label">Gas Price ($/MBTU)</label>
-                                    <input type="number" step="0.01" class="form-control" id="gas_price_per_mbtu" name="gas_price_per_mbtu">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="gas_kcal" class="form-label">Gas kCal</label>
-                                    <input type="number" class="form-control" id="gas_kcal" name="gas_kcal" value="8500">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="generator_efficiency" class="form-label">Generator Efficiency (%)</label>
-                                    <input type="number" step="0.01" class="form-control" id="generator_efficiency" name="generator_efficiency" value="35">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="gas_price_per_mwh" class="form-label">Gas Price ($/MWh) 
-                                        <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#gasPriceModal">i</button>
-                                    </label>
-                                    <input type="number" step="0.01" class="form-control" id="gas_price_per_mwh" name="gas_price_per_mwh" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="om_per_mwh" class="form-label">O&M ($/MWh)</label>
-                                    <input type="number" step="0.01" class="form-control" id="om_per_mwh" name="om_per_mwh">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="overhauling" class="form-label">Overhauling ($)</label>
-                                    <input type="number" class="form-control" id="overhauling" name="overhauling">
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="location" class="form-label">Location</label>
-                                <input type="text" class="form-control" id="location" name="location" value="Neuquen" required>
-                            </div>
+                            <div id="gas_powered_fields" style="visibility: hidden">
                         </div>
                     </div>
                 </div>
 
+                </div>
+                <div class="row">
+                <!-- OPEX -->
+                <div class="col-12 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>OPEX (Operating Expenses)</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6><strong>Staff</strong></h6>
+                            <div id="staff_fields">
+                                <!-- Dynamic staff fields will be added here -->
+                            </div>
+                            <button type="button" class="btn btn-secondary mb-3" onclick="addStaff()">Add Staff</button>
+                            <h6><strong>Services</strong></h6>
+                            <div class="mb-3">
+                                <label for="insurance" class="form-label">Insurance (USD/month)</label>
+                                <input type="number" class="form-control" id="insurance" name="insurance" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="software" class="form-label">Software Licenses (USD/month)</label>
+                                <input type="number" class="form-control" id="software" name="software" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="internet" class="form-label">Internet (USD/month)</label>
+                                <input type="number" class="form-control" id="internet" name="internet" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="security" class="form-label">Security (USD/month)</label>
+                                <input type="number" class="form-control" id="security" name="security" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="accounting" class="form-label">Accounting (USD/month)</label>
+                                <input type="number" class="form-control" id="accounting" name="accounting" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="lawyer" class="form-label">Lawyer (USD/month)</label>
+                                <input type="number" class="form-control" id="lawyer" name="lawyer" value="0">
+                            </div>
+                            <div id="service_fields">
+                                <!-- Dynamic service fields will be added here -->
+                            </div>
+                            <button type="button" class="btn btn-secondary mb-3" onclick="addService()">Add Service</button>
+                            <h6><strong>Others</strong></h6>
+                            <div class="mb-3">
+                                <label for="downtime_percent" class="form-label">Downtime (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="downtime_percent" name="downtime_percent" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="operational_costs" class="form-label">Additional Operational Costs (USD/month)</label>
+                                <input type="number" class="form-control" id="operational_costs" name="operational_costs" value="0">
+                            </div>
+                            <div id="other_fields">
+                                <!-- Dynamic other OPEX fields will be added here -->
+                            </div>
+                            <button type="button" class="btn btn-secondary mb-3" onclick="addOtherOpex()">Add Other OPEX</button>
+                        </div>
+                    </div>
+                </div>
+
+                </div>
+                <div class="row">
                 <!-- Bitcoin Variables -->
-                <div class="col-md-4 mb-4">
+                <div class="col-12 mb-4">
                     <div class="card h-100">
                         <div class="card-header">
                             <h5>Bitcoin Variables</h5>
@@ -185,8 +214,10 @@
                     </div>
                 </div>
 
+                </div>
+                <div class="row">
                 <!-- Depreciation -->
-                <div class="col-md-4 mb-4">
+                <div class="col-12 mb-4">
                     <div class="card h-100">
                         <div class="card-header">
                             <h5>Depreciation</h5>
@@ -208,58 +239,102 @@
                 </div>
             </div>
 
-            <div class="row">
-                <!-- Others -->
-                <div class="col-md-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5>Others</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="tax_rate" class="form-label">Tax Rate (%)</label>
-                                <input type="number" step="0.01" class="form-control" id="tax_rate" name="tax_rate" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="downtime_percent" class="form-label">Downtime (%)</label>
-                                <input type="number" step="0.01" class="form-control" id="downtime_percent" name="downtime_percent" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="operational_costs" class="form-label">Additional Operational Costs (USD/year)</label>
-                                <input type="number" class="form-control" id="operational_costs" name="operational_costs" value="0">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-center mt-4">
-                <button type="submit" class="btn btn-primary btn-lg">Calculate</button>
-            </div>
         </form>
     </div>
     <script>
-        let otherCount = 0;
+        let capexCount = 0;
         function addOtherCapex() {
             const name = prompt("Enter the name for the new CAPEX item:");
             if (!name) return;
-            otherCount++;
+            capexCount++;
             const div = document.getElementById('other_capex');
             const newField = document.createElement('div');
             newField.className = 'mb-3';
-            newField.id = `capex_item_${otherCount}`;
+            newField.id = `capex_item_${capexCount}`;
             newField.innerHTML = `
-                <label for="other_capex_${otherCount}" class="form-label">${name} (USD)</label>
-                <input type="hidden" name="other_capex_name_${otherCount}" value="${name}">
+                <label for="other_capex_${capexCount}" class="form-label">${name} (USD)</label>
+                <input type="hidden" name="other_capex_name_${capexCount}" value="${name}">
                 <div class="input-group">
-                    <input type="number" class="form-control" id="other_capex_${otherCount}" name="other_capex_${otherCount}" value="0">
-                    <button type="button" class="btn btn-danger" onclick="removeCapex(${otherCount})">Remove</button>
+                    <input type="number" class="form-control" id="other_capex_${capexCount}" name="other_capex_${capexCount}" value="0">
+                    <button type="button" class="btn btn-danger" onclick="removeCapex(${capexCount})">Remove</button>
                 </div>
             `;
             div.appendChild(newField);
         }
         function removeCapex(id) {
             const element = document.getElementById(`capex_item_${id}`);
+            if (element) element.remove();
+        }
+
+        let staffCount = 0;
+        function addStaff() {
+            const name = prompt("Enter the staff role name:");
+            if (!name) return;
+            staffCount++;
+            const div = document.getElementById('staff_fields');
+            const newField = document.createElement('div');
+            newField.className = 'mb-3';
+            newField.id = `staff_item_${staffCount}`;
+            newField.innerHTML = `
+                <label for="staff_${staffCount}" class="form-label">${name} (USD/month)</label>
+                <input type="hidden" name="staff_name_${staffCount}" value="${name}">
+                <div class="input-group">
+                    <input type="number" class="form-control" id="staff_${staffCount}" name="staff_${staffCount}" value="0">
+                    <button type="button" class="btn btn-danger" onclick="removeStaff(${staffCount})">Remove</button>
+                </div>
+            `;
+            div.appendChild(newField);
+        }
+        function removeStaff(id) {
+            const element = document.getElementById(`staff_item_${id}`);
+            if (element) element.remove();
+        }
+
+        let serviceCount = 0;
+        function addService() {
+            const name = prompt("Enter the service name:");
+            if (!name) return;
+            serviceCount++;
+            const div = document.getElementById('service_fields');
+            const newField = document.createElement('div');
+            newField.className = 'mb-3';
+            newField.id = `service_item_${serviceCount}`;
+            newField.innerHTML = `
+                <label for="service_${serviceCount}" class="form-label">${name} (USD/month)</label>
+                <input type="hidden" name="service_name_${serviceCount}" value="${name}">
+                <div class="input-group">
+                    <input type="number" class="form-control" id="service_${serviceCount}" name="service_${serviceCount}" value="0">
+                    <button type="button" class="btn btn-danger" onclick="removeService(${serviceCount})">Remove</button>
+                </div>
+            `;
+            div.appendChild(newField);
+        }
+        function removeService(id) {
+            const element = document.getElementById(`service_item_${id}`);
+            if (element) element.remove();
+        }
+
+        let opexCount = 0;
+        function addOtherOpex() {
+            const name = prompt("Enter the other OPEX name:");
+            if (!name) return;
+            opexCount++;
+            const div = document.getElementById('other_fields');
+            const newField = document.createElement('div');
+            newField.className = 'mb-3';
+            newField.id = `other_item_${opexCount}`;
+            newField.innerHTML = `
+                <label for="other_${opexCount}" class="form-label">${name} (USD/month)</label>
+                <input type="hidden" name="other_name_${opexCount}" value="${name}">
+                <div class="input-group">
+                    <input type="number" class="form-control" id="other_${opexCount}" name="other_${opexCount}" value="0">
+                    <button type="button" class="btn btn-danger" onclick="removeOtherOpex(${opexCount})">Remove</button>
+                </div>
+            `;
+            div.appendChild(newField);
+        }
+        function removeOtherOpex(id) {
+            const element = document.getElementById(`other_item_${id}`);
             if (element) element.remove();
         }
 
@@ -363,13 +438,56 @@
             const powerSource = document.getElementById('power_source').value;
             const directFields = document.getElementById('direct_energy_fields');
             const gasFields = document.getElementById('gas_powered_fields');
+            directFields.innerHTML = '';
+            gasFields.innerHTML = '';
             if (powerSource === 'Direct Energy') {
-                directFields.style.display = 'block';
-                gasFields.style.display = 'none';
-            } else {
-                directFields.style.display = 'none';
-                gasFields.style.display = 'block';
+                directFields.style.visibility = 'visible';
+                gasFields.style.visibility = 'hidden';
+                directFields.innerHTML = `
+                    <div class="mb-3">
+                        <label for="energy_cost_per_mwh" class="form-label">Energy Cost ($/MWh)</label>
+                        <input type="number" step="0.01" class="form-control" id="energy_cost_per_mwh" name="energy_cost_per_mwh" required>
+                    </div>
+                `;
+            } else if (powerSource === 'Gas powered') {
+                directFields.style.visibility = 'hidden';
+                gasFields.style.visibility = 'visible';
+                gasFields.innerHTML = `
+                    <div class="mb-3">
+                        <label for="gas_price_per_mbtu" class="form-label">Gas Price ($/MBTU)</label>
+                        <input type="number" step="0.01" class="form-control" id="gas_price_per_mbtu" name="gas_price_per_mbtu">
+                    </div>
+                    <div class="mb-3">
+                        <label for="gas_kcal" class="form-label">Gas kCal</label>
+                        <input type="number" class="form-control" id="gas_kcal" name="gas_kcal" value="8500">
+                    </div>
+                    <div class="mb-3">
+                        <label for="generator_efficiency" class="form-label">Generator Efficiency (%)</label>
+                        <input type="number" step="0.01" class="form-control" id="generator_efficiency" name="generator_efficiency" value="35">
+                    </div>
+                    <div class="mb-3">
+                        <label for="gas_price_per_mwh" class="form-label">Gas Price ($/MWh) 
+                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#gasPriceModal">i</button>
+                        </label>
+                        <input type="number" step="0.01" class="form-control" id="gas_price_per_mwh" name="gas_price_per_mwh" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="om_per_mwh" class="form-label">O&M ($/MWh)</label>
+                        <input type="number" step="0.01" class="form-control" id="om_per_mwh" name="om_per_mwh">
+                    </div>
+                    <div class="mb-3">
+                        <label for="overhauling" class="form-label">Overhauling ($)</label>
+                        <input type="number" class="form-control" id="overhauling" name="overhauling">
+                    </div>
+                `;
                 calculateGasPrice();
+                // Add event listeners for gas fields
+                document.getElementById('gas_price_per_mbtu').addEventListener('input', calculateGasPrice);
+                document.getElementById('gas_kcal').addEventListener('input', calculateGasPrice);
+                document.getElementById('generator_efficiency').addEventListener('input', calculateGasPrice);
+            } else {
+                directFields.style.visibility = 'hidden';
+                gasFields.style.visibility = 'hidden';
             }
         }
 
@@ -383,11 +501,46 @@
             document.getElementById('gas_price_per_mwh').value = gasPricePerMwh.toFixed(2);
         }
 
-        // Add onchange to gas inputs
-        document.getElementById('gas_price_per_mbtu').addEventListener('input', calculateGasPrice);
-        document.getElementById('gas_kcal').addEventListener('input', calculateGasPrice);
-        document.getElementById('generator_efficiency').addEventListener('input', calculateGasPrice);
+        // Add event listeners for all inputs to trigger calculation
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('input', debounce(calculateResults, 500));
+            el.addEventListener('change', debounce(calculateResults, 500));
+        });
+
+        // Initialize power source display
+        togglePowerSource();
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function calculateResults() {
+            const form = document.querySelector('form');
+            const formData = new FormData(form);
+            fetch('/calculate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('results').innerHTML = html;
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Initial calculation
+        calculateResults();
     </script>
+
+    <div id="results"></div>
 
     <!-- Modal for Gas Price Calculation -->
     <div class="modal fade" id="gasPriceModal" tabindex="-1" aria-labelledby="gasPriceModalLabel" aria-hidden="true">

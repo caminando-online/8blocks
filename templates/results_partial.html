@@ -1,0 +1,67 @@
+<h1>Bitcoin Mining Farm Calculation Results</h1>
+<p>Current BTC Price: ${{ btc_price }}</p>
+<p>Current Difficulty: {{ difficulty }}</p>
+<p>Current Block: {{ current_block }}</p>
+<p>Blocks to Next Halving: {{ blocks_to_halving }}</p>
+<p>Months to Next Halving: {{ "%.1f"|format(months_to_halving) }}</p>
+<p>Avg Monthly Difficulty Change (6m): {{ "%.2f"|format(avg_change_6m) }}%</p>
+<p>Avg Monthly Difficulty Change (12m): {{ "%.2f"|format(avg_change_12m) }}%</p>
+<p>Avg Monthly Difficulty Change (24m): {{ "%.2f"|format(avg_change_24m) }}%</p>
+<p>Avg Monthly Difficulty Change (36m): {{ "%.2f"|format(avg_change_36m) }}%</p>
+<p>Avg Monthly Difficulty Change (48m): {{ "%.2f"|format(avg_change_48m) }}%</p>
+<div class="row">
+    <div class="col-md-6">
+        <h3>Metrics</h3>
+        <ul>
+            <li>Daily BTC Reward: {{ results.daily_btc }}</li>
+            <li>Daily USD Revenue: ${{ results.daily_usd }}</li>
+            <li>Daily Cost: ${{ results.daily_cost }}</li>
+            <li>Annual Profit (USD): ${{ results.annual_profit_usd }}</li>
+            <li>Total Profits (USD over 8 years): ${{ results.total_profits_usd }}</li>
+            <li>Annual Depreciation (USD): ${{ results.annual_depreciation }}</li>
+            <li>ROI: {{ results.roi }}%</li>
+        </ul>
+        <h3>CAPEX Breakdown</h3>
+        <ul>
+            {% for key, value in results.capex_breakdown.items() %}
+            <li>{{ key }}: ${{ value }}</li>
+            {% endfor %}
+        </ul>
+        <h3>OPEX Breakdown</h3>
+        <ul>
+            {% for key, value in results.opex_breakdown.items() %}
+            <li>{{ key }}: ${{ value }}</li>
+            {% endfor %}
+        </ul>
+        <h3>ASICs Configuration</h3>
+        <p>Total Hashrate: {{ results.total_asic_hashrate }} TH/s</p>
+        <p>Total ASIC Cost: ${{ results.total_asic_cost }}</p>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th style="min-width: 200px;">Model</th>
+                    <th>Units</th>
+                    <th>Price (unit)</th>
+                    <th>Hashrate TH</th>
+                    <th>Consumption</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asic in results.asics %}
+                <tr>
+                    <td>{{ asic.model }}</td>
+                    <td>{{ asic.units }}</td>
+                    <td>${{ asic.price }}</td>
+                    <td>{{ asic.hashrate }}</td>
+                    <td>{{ asic.consumption }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('export_excel') }}" class="btn btn-success">Export to Excel</a>
+    </div>
+    <div class="col-md-6">
+        <h3>Projection Chart</h3>
+        {{ chart_html | safe }}
+    </div>
+</div>

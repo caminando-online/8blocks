@@ -16,7 +16,7 @@ This is a web-based calculator for modeling a Bitcoin mining farm business in Ne
 
 ## Usage
 - Fill the form with your parameters.
-- Click Calculate to see results.
+- Results update automatically as you type.
 - Export results to Excel.
 
 ## Notes
