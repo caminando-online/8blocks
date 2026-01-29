@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Mining Farm Calculator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Bitcoin Mining Farm Business Model Calculator</h1>
+        <form method="POST">
+            <div class="row">
+                <!-- CAPEX -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>CAPEX (Capital Expenditures)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="research" class="form-label">Research (USD)</label>
+                                <input type="number" class="form-control" id="research" name="research" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="asics_unit_value" class="form-label">ASICs ($)</label>
+                                <input type="number" class="form-control" id="asics_unit_value" name="asics_unit_value" value="0" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="shelter" class="form-label">Shelter (USD)</label>
+                                <input type="number" class="form-control" id="shelter" name="shelter" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="generator" class="form-label">Generator (USD)</label>
+                                <input type="number" class="form-control" id="generator" name="generator" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="infrastructure" class="form-label">Infrastructure (USD)</label>
+                                <input type="number" class="form-control" id="infrastructure" name="infrastructure" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="general_expenses" class="form-label">General Expenses (USD)</label>
+                                <input type="number" class="form-control" id="general_expenses" name="general_expenses" value="0">
+                            </div>
+                            <div id="other_capex">
+                                <!-- Dynamic other fields will be added here -->
+                            </div>
+                            <button type="button" class="btn btn-secondary mb-3" onclick="addOtherCapex()">Add Other</button>
+                            <div class="mb-3">
+                                <label for="financing_rate" class="form-label">Financing Rate (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="financing_rate" name="financing_rate" value="0">
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="expansion_10mw" name="expansion_10mw" value="yes">
+                                <label class="form-check-label" for="expansion_10mw">Plan expansion to 10 MW</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="expansion_40mw" name="expansion_40mw" value="yes">
+                                <label class="form-check-label" for="expansion_40mw">Plan expansion to 40 MW</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ASICs (details) -->
+                <div class="col-md-8 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>ASICs (Details)</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-bordered" id="asics_table">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 200px;">Model</th>
+                                        <th>Units</th>
+                                        <th>Price (unit)</th>
+                                        <th>Hashrate TH</th>
+                                        <th>Consumption</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="asics_tbody">
+                                    <!-- Rows will be added here -->
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn btn-primary" onclick="addAsicRow()">Add ASIC</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Electricity -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>Electricity</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="power_source" class="form-label">Power Source</label>
+                                <select class="form-control" id="power_source" name="power_source" onchange="togglePowerSource()">
+                                    <option value="Direct Energy">Direct Energy</option>
+                                    <option value="Gas powered">Gas powered</option>
+                                </select>
+                            </div>
+                            <div id="direct_energy_fields">
+                                <div class="mb-3">
+                                    <label for="energy_cost_per_mwh" class="form-label">Energy Cost ($/MWh)</label>
+                                    <input type="number" step="0.01" class="form-control" id="energy_cost_per_mwh" name="energy_cost_per_mwh" required>
+                                </div>
+                            </div>
+                            <div id="gas_powered_fields" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="gas_price_per_mbtu" class="form-label">Gas Price ($/MBTU)</label>
+                                    <input type="number" step="0.01" class="form-control" id="gas_price_per_mbtu" name="gas_price_per_mbtu">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="gas_kcal" class="form-label">Gas kCal</label>
+                                    <input type="number" class="form-control" id="gas_kcal" name="gas_kcal" value="8500">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="generator_efficiency" class="form-label">Generator Efficiency (%)</label>
+                                    <input type="number" step="0.01" class="form-control" id="generator_efficiency" name="generator_efficiency" value="35">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="gas_price_per_mwh" class="form-label">Gas Price ($/MWh) 
+                                        <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#gasPriceModal">i</button>
+                                    </label>
+                                    <input type="number" step="0.01" class="form-control" id="gas_price_per_mwh" name="gas_price_per_mwh" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="om_per_mwh" class="form-label">O&M ($/MWh)</label>
+                                    <input type="number" step="0.01" class="form-control" id="om_per_mwh" name="om_per_mwh">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="overhauling" class="form-label">Overhauling ($)</label>
+                                    <input type="number" class="form-control" id="overhauling" name="overhauling">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="location" class="form-label">Location</label>
+                                <input type="text" class="form-control" id="location" name="location" value="Neuquen" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bitcoin Variables -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>Bitcoin Variables</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li><strong>BTC Price:</strong> ${{ btc_price }}</li>
+                                <li><strong>Current Difficulty:</strong> {{ difficulty }}</li>
+                                <li><strong>Current Block:</strong> {{ current_block }}</li>
+                                <li><strong>Blocks to Next Halving:</strong> {{ blocks_to_halving }}</li>
+                                <li><strong>Months to Next Halving:</strong> {{ "%.1f"|format(months_to_halving) }}</li>
+                                <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
+                                <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
+                                <li><strong>Avg Monthly Difficulty Change (24m):</strong> {{ "%.2f"|format(avg_change_24m) }}%</li>
+                                <li><strong>Avg Monthly Difficulty Change (36m):</strong> {{ "%.2f"|format(avg_change_36m) }}%</li>
+                                <li><strong>Avg Monthly Difficulty Change (48m):</strong> {{ "%.2f"|format(avg_change_48m) }}%</li>
+                                <li><strong>Block Reward:</strong> 3.125 BTC</li>
+                            </ul>
+                            <div class="mb-3">
+                                <label for="btc_price_override" class="form-label">BTC Price Override (USD) - Leave blank for real-time</label>
+                                <input type="number" step="0.01" class="form-control" id="btc_price_override" name="btc_price_override">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Depreciation -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>Depreciation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="depreciation_years" class="form-label">Depreciation Period (Years)</label>
+                                <input type="number" class="form-control" id="depreciation_years" name="depreciation_years" value="3">
+                            </div>
+                            <div class="mb-3">
+                                <label for="depreciation_method" class="form-label">Depreciation Method</label>
+                                <select class="form-control" id="depreciation_method" name="depreciation_method">
+                                    <option value="linear">Linear</option>
+                                    <option value="declining">Declining Balance</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Others -->
+                <div class="col-md-12 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5>Others</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="tax_rate" class="form-label">Tax Rate (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="tax_rate" name="tax_rate" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="downtime_percent" class="form-label">Downtime (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="downtime_percent" name="downtime_percent" value="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="operational_costs" class="form-label">Additional Operational Costs (USD/year)</label>
+                                <input type="number" class="form-control" id="operational_costs" name="operational_costs" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">Calculate</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        let otherCount = 0;
+        function addOtherCapex() {
+            const name = prompt("Enter the name for the new CAPEX item:");
+            if (!name) return;
+            otherCount++;
+            const div = document.getElementById('other_capex');
+            const newField = document.createElement('div');
+            newField.className = 'mb-3';
+            newField.id = `capex_item_${otherCount}`;
+            newField.innerHTML = `
+                <label for="other_capex_${otherCount}" class="form-label">${name} (USD)</label>
+                <input type="hidden" name="other_capex_name_${otherCount}" value="${name}">
+                <div class="input-group">
+                    <input type="number" class="form-control" id="other_capex_${otherCount}" name="other_capex_${otherCount}" value="0">
+                    <button type="button" class="btn btn-danger" onclick="removeCapex(${otherCount})">Remove</button>
+                </div>
+            `;
+            div.appendChild(newField);
+        }
+        function removeCapex(id) {
+            const element = document.getElementById(`capex_item_${id}`);
+            if (element) element.remove();
+        }
+
+        const models = {
+            Bitmain: ['Antminer S19', 'Antminer S19 Pro', 'Antminer S19 XP', 'Antminer S21', 'Antminer S21 XP'],
+            WhatsMiners: ['M30', 'M50', 'M60', 'M70']
+        };
+
+        const asicSpecs = {
+            "Antminer S19": { hashrate: 100, consumption: 3250 },
+            "Antminer S19 Pro": { hashrate: 100, consumption: 3250 },
+            "Antminer S19 XP": { hashrate: 473, consumption: 4730 },
+            "Antminer S21": { hashrate: 473, consumption: 4730 },
+            "Antminer S21 XP": { hashrate: 473, consumption: 4730 },
+            "M30": { hashrate: 112, consumption: 3472 },
+            "M50": { hashrate: 118, consumption: 3472 },
+            "M60": { hashrate: 146, consumption: 3396 },
+            "M70": { hashrate: 176, consumption: 3472 }
+        };
+
+        function updateSpecs(select) {
+            const row = select.closest('tr');
+            const model = select.value;
+            if (asicSpecs[model]) {
+                row.querySelector('input[name*="hashrate"]').value = asicSpecs[model].hashrate;
+                row.querySelector('input[name*="consumption"]').value = asicSpecs[model].consumption;
+            }
+            updateAsicTotal();
+        }
+
+        function updateAsicTotal() {
+            let total = 0;
+            const rows = document.querySelectorAll('#asics_tbody tr');
+            rows.forEach(row => {
+                const units = parseInt(row.querySelector('input[name*="units"]').value) || 0;
+                const price = parseFloat(row.querySelector('input[name*="price"]').value) || 0;
+                total += units * price;
+            });
+            document.getElementById('asics_unit_value').value = total.toFixed(2);
+        }
+
+        function updateManufacturer() {
+            updateModels();
+        }
+
+        function updateModels() {
+            const manufacturer = document.getElementById('manufacturer').value;
+            const modelSelect = document.getElementById('model');
+            modelSelect.innerHTML = '';
+            if (models[manufacturer]) {
+                models[manufacturer].forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.text = model;
+                    modelSelect.appendChild(option);
+                });
+            }
+        }
+
+        let asicRowCount = 0;
+        function addAsicRow() {
+            asicRowCount++;
+            const tbody = document.getElementById('asics_tbody');
+            const row = document.createElement('tr');
+            row.id = `asic_row_${asicRowCount}`;
+            row.innerHTML = `
+                <td>
+                    <select class="form-control" name="asic_model_${asicRowCount}" id="asic_model_${asicRowCount}" onchange="updateSpecs(this)">
+                        <optgroup label="Bitmain">
+                            <option value="Antminer S19" selected>Antminer S19</option>
+                            <option value="Antminer S19 Pro">Antminer S19 Pro</option>
+                            <option value="Antminer S19 XP">Antminer S19 XP</option>
+                            <option value="Antminer S21">Antminer S21</option>
+                            <option value="Antminer S21 XP">Antminer S21 XP</option>
+                        </optgroup>
+                        <optgroup label="WhatsMiners">
+                            <option value="M30">M30</option>
+                            <option value="M50">M50</option>
+                            <option value="M60">M60</option>
+                            <option value="M70">M70</option>
+                        </optgroup>
+                    </select>
+                </td>
+                <td><input type="number" class="form-control" name="asic_units_${asicRowCount}" value="1" onchange="updateAsicTotal()"></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_price_${asicRowCount}" value="0" onchange="updateAsicTotal()"></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_hashrate_${asicRowCount}" value="0"></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_consumption_${asicRowCount}" value="0"></td>
+                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeAsicRow(${asicRowCount})">Remove</button></td>
+            `;
+            tbody.appendChild(row);
+            updateSpecs(row.querySelector('select'));
+        }
+
+        function removeAsicRow(id) {
+            const row = document.getElementById(`asic_row_${id}`);
+            if (row) row.remove();
+            updateAsicTotal();
+        }
+
+        function togglePowerSource() {
+            const powerSource = document.getElementById('power_source').value;
+            const directFields = document.getElementById('direct_energy_fields');
+            const gasFields = document.getElementById('gas_powered_fields');
+            if (powerSource === 'Direct Energy') {
+                directFields.style.display = 'block';
+                gasFields.style.display = 'none';
+            } else {
+                directFields.style.display = 'none';
+                gasFields.style.display = 'block';
+                calculateGasPrice();
+            }
+        }
+
+        function calculateGasPrice() {
+            const gasPricePerMbtu = parseFloat(document.getElementById('gas_price_per_mbtu').value) || 0;
+            const gasKcal = parseFloat(document.getElementById('gas_kcal').value) || 8500;
+            const generatorEfficiency = parseFloat(document.getElementById('generator_efficiency').value) || 35;
+            const standardKcal = 8500;
+            const baseMbtuPerMwh = 3.412;
+            const gasPricePerMwh = (gasPricePerMbtu * baseMbtuPerMwh) / (gasKcal / standardKcal) / (generatorEfficiency / 100);
+            document.getElementById('gas_price_per_mwh').value = gasPricePerMwh.toFixed(2);
+        }
+
+        // Add onchange to gas inputs
+        document.getElementById('gas_price_per_mbtu').addEventListener('input', calculateGasPrice);
+        document.getElementById('gas_kcal').addEventListener('input', calculateGasPrice);
+        document.getElementById('generator_efficiency').addEventListener('input', calculateGasPrice);
+    </script>
+
+    <!-- Modal for Gas Price Calculation -->
+    <div class="modal fade" id="gasPriceModal" tabindex="-1" aria-labelledby="gasPriceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="gasPriceModalLabel">Gas Price Calculation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>The gas price per MWh is calculated as follows:</p>
+                    <ol>
+                        <li>Base MBTU per MWh: 3.412</li>
+                        <li>Adjustment for calorific value: Divide by (Gas kCal / 8500)</li>
+                        <li>Calculate gas price per MWh: (Gas Price per MBTU × Base MBTU per MWh × Adjustment) / (Generator Efficiency / 100)</li>
+                    </ol>
+                    <p>Higher kCal values result in lower costs since more energy is available per unit of gas.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
