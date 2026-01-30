@@ -292,6 +292,10 @@ def index():
         results['asics'] = asics
         results['total_asic_hashrate'] = total_hashrate
         results['total_asic_cost'] = total_cost
+        total_units = sum(asic['units'] for asic in asics)
+        network_hashrate = difficulty * (2**32) / 600
+        results['total_asic_units'] = total_units
+        results['network_percentage'] = (total_hashrate * 1e12 / network_hashrate) * 100 if network_hashrate > 0 else 0
 
         # Create chart (placeholder)
         fig = go.Figure()
@@ -469,6 +473,10 @@ def calculate():
     results['asics'] = asics
     results['total_asic_hashrate'] = total_hashrate
     results['total_asic_cost'] = total_cost
+    total_units = sum(asic['units'] for asic in asics)
+    network_hashrate = difficulty * (2**32) / 600
+    results['total_asic_units'] = total_units
+    results['network_percentage'] = (total_hashrate * 1e12 / network_hashrate) * 100 if network_hashrate > 0 else 0
 
     # Create chart (placeholder)
     fig = go.Figure()
