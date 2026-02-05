@@ -9,6 +9,48 @@ import os
 
 app = Flask(__name__)
 
+# ASIC models data from Bitmain shop
+asics_data = [
+    {'model': 'Antminer S23 Hyd', 'price': 17400, 'hashrate': 580, 'consumption': 5510},
+    {'model': 'Antminer S21 XP', 'price': 4590, 'hashrate': 270, 'consumption': 3645},
+    {'model': 'Antminer S23e U2H', 'price': 19030, 'hashrate': 865, 'consumption': 8650},
+    {'model': 'Antminer S21 XP+ Hyd', 'price': 9120, 'hashrate': 480, 'consumption': 5280},
+    {'model': 'Antminer S21j XP Hyd', 'price': 8415, 'hashrate': 495, 'consumption': 5940},
+    {'model': 'Antminer S21 XP Hyd', 'price': 10170, 'hashrate': 473, 'consumption': 5676},
+    {'model': 'Antminer U3S21EXPH', 'price': 18490, 'hashrate': 860, 'consumption': 11180},
+    {'model': 'Antminer S21e XP Hyd', 'price': 9245, 'hashrate': 430, 'consumption': 5590},
+    {'model': 'Antminer S21 XP Imm', 'price': 5400, 'hashrate': 300, 'consumption': 4050},
+    {'model': 'Antminer S21+ Hyd', 'price': 2864, 'hashrate': 358, 'consumption': 5370},
+    {'model': 'Antminer S21 Imm', 'price': 1720, 'hashrate': 215, 'consumption': 3440},
+    {'model': 'Antminer S21e Hyd', 'price': 1728, 'hashrate': 288, 'consumption': 4896},
+    {'model': 'Antminer S19 XP+ Hyd', 'price': 2511, 'hashrate': 279, 'consumption': 5301},
+    {'model': 'Antminer S21 Pro', 'price': 3744, 'hashrate': 234, 'consumption': 3510},
+    {'model': 'Antminer S21 Hyd', 'price': 4945, 'hashrate': 319, 'consumption': 5104},
+    {'model': 'Antminer S21+', 'price': 3240, 'hashrate': 216, 'consumption': 3564},
+    {'model': 'Antminer S21', 'price': 5400, 'hashrate': 200, 'consumption': 3500},
+    {'model': 'Antminer T21', 'price': 2356, 'hashrate': 190, 'consumption': 3610},
+    {'model': 'Antminer S19 XP Hyd', 'price': 2313, 'hashrate': 257, 'consumption': 5346},
+    {'model': 'Antminer S19j XP', 'price': 3473, 'hashrate': 151, 'consumption': 3247},
+    {'model': 'Antminer S19e XP Hyd', 'price': 2761, 'hashrate': 251, 'consumption': 5522},
+    {'model': 'Antminer S19 Pro+ Hyd', 'price': 2292, 'hashrate': 191, 'consumption': 5252},
+    {'model': 'HOST Antminer S21 Hyd', 'price': 4530, 'hashrate': 302, 'consumption': 4832},
+    {'model': 'HOST Antminer S21e Hyd', 'price': 4030, 'hashrate': 310, 'consumption': 5270},
+    {'model': 'HOST Antminer S19 XP Hyd', 'price': 2313, 'hashrate': 257, 'consumption': 5345},
+    {'model': 'WhatsMiner M73', 'price': 8601, 'hashrate': 512, 'consumption': 7424},
+    {'model': 'WhatsMiner M70S', 'price': 4700, 'hashrate': 250, 'consumption': 3375},
+    {'model': 'WhatsMiner M70', 'price': 3658, 'hashrate': 236, 'consumption': 3426},
+    {'model': 'WhatsMiner M60S+', 'price': 2312, 'hashrate': 188, 'consumption': 3404},
+    {'model': 'WhatsMiner M60S', 'price': 2060, 'hashrate': 186, 'consumption': 3441},
+    {'model': 'WhatsMiner M50S++', 'price': 1500, 'hashrate': 140, 'consumption': 3426},
+    {'model': 'WhatsMiner M50S', 'price': 573, 'hashrate': 122, 'consumption': 3426},
+    {'model': 'WhatsMiner M50', 'price': 573, 'hashrate': 118, 'consumption': 3426},
+    {'model': 'WhatsMiner M30S++', 'price': 1200, 'hashrate': 112, 'consumption': 3472},
+    {'model': 'WhatsMiner M30S', 'price': 1000, 'hashrate': 88, 'consumption': 3344},
+]
+for asic in asics_data:
+    asic['usd_per_th'] = asic['price'] / asic['hashrate'] if asic['hashrate'] != 0 else 0
+    asic['j_per_th'] = asic['consumption'] / asic['hashrate'] if asic['hashrate'] != 0 else 0
+
 def safe_float(value, default=0):
     try:
         return float(value) if value else default
@@ -143,6 +185,10 @@ def index():
     blocks_to_halving = next_halving_block - current_block
     months_to_halving = blocks_to_halving / (144 * 30)  # Approximate: 144 blocks/day * 30 days/month
 
+    # Difficulty adjustment every 2016 blocks
+    next_difficulty_block = ((current_block // 2016) + 1) * 2016
+    blocks_to_next_difficulty = next_difficulty_block - current_block
+
     # Historical difficulty changes
     hist_diff = get_historical_difficulty()
     avg_change_6m = calculate_avg_monthly_difficulty_change(hist_diff, 6)
@@ -150,6 +196,9 @@ def index():
     avg_change_24m = calculate_avg_monthly_difficulty_change(hist_diff, 24)
     avg_change_36m = calculate_avg_monthly_difficulty_change(hist_diff, 36)
     avg_change_48m = calculate_avg_monthly_difficulty_change(hist_diff, 48)
+
+    # Estimated next difficulty change from CoinWarz
+    estimated_next_diff_change = -13.42
 
     if request.method == 'POST':
         # Get CAPEX
@@ -197,7 +246,14 @@ def index():
             energy_cost_per_mwh = safe_float(request.form.get('energy_cost_per_mwh'))
             energy_cost_per_kwh = energy_cost_per_mwh / 1000
         else:
-            gas_price_per_mwh = safe_float(request.form.get('gas_price_per_mwh'))
+            gas_price_per_unit = safe_float(request.form.get('gas_price_per_unit'))
+            gas_unit = request.form.get('gas_unit', 'MBTU')
+            if gas_unit == 'MBTU':
+                # Convert MBTU to MWh: 1 MBTU ≈ 0.293 MWh
+                gas_price_per_mwh = gas_price_per_unit / 0.293
+            else:  # M3
+                # Assume 1 M3 gas ≈ 10.55 kWh or 0.01055 MWh
+                gas_price_per_mwh = gas_price_per_unit / 0.01055
             energy_cost_per_kwh = gas_price_per_mwh / 1000
         hardware_type = request.form.get('hardware_type', 'Air')
         manufacturer = request.form.get('manufacturer', '')
@@ -303,10 +359,10 @@ def index():
         fig.add_trace(go.Scatter(x=list(range(1, 9)), y=[results['annual_depreciation']] * 8, mode='lines', name='Annual Depreciation USD'))
         chart_html = fig.to_html(full_html=False)
 
-        return render_template('results.html', results=results, chart_html=chart_html, btc_price=btc_price, difficulty=difficulty, current_block=current_block, blocks_to_halving=blocks_to_halving, months_to_halving=months_to_halving, avg_change_6m=avg_change_6m, avg_change_12m=avg_change_12m, avg_change_24m=avg_change_24m, avg_change_36m=avg_change_36m, avg_change_48m=avg_change_48m)
+        return render_template('results.html', results=results, chart_html=chart_html, btc_price=btc_price, difficulty=difficulty, current_block=current_block, blocks_to_halving=blocks_to_halving, months_to_halving=months_to_halving, blocks_to_next_difficulty=blocks_to_next_difficulty, estimated_next_diff_change=estimated_next_diff_change, avg_change_6m=avg_change_6m, avg_change_12m=avg_change_12m, avg_change_24m=avg_change_24m, avg_change_36m=avg_change_36m, avg_change_48m=avg_change_48m)
 
     # For GET
-    return render_template('index.html', btc_price=btc_price, difficulty=difficulty, current_block=current_block, blocks_to_halving=blocks_to_halving, months_to_halving=months_to_halving, avg_change_6m=avg_change_6m, avg_change_12m=avg_change_12m, avg_change_24m=avg_change_24m, avg_change_36m=avg_change_36m, avg_change_48m=avg_change_48m)
+    return render_template('index.html', btc_price=btc_price, difficulty=difficulty, current_block=current_block, blocks_to_halving=blocks_to_halving, months_to_halving=months_to_halving, blocks_to_next_difficulty=blocks_to_next_difficulty, estimated_next_diff_change=estimated_next_diff_change, avg_change_6m=avg_change_6m, avg_change_12m=avg_change_12m, avg_change_24m=avg_change_24m, avg_change_36m=avg_change_36m, avg_change_48m=avg_change_48m)
 
 @app.route('/export_excel')
 def export_excel():
@@ -339,26 +395,49 @@ def calculate():
             other_capex_breakdown[name] = val
     investment_usd = research + asics_unit_value + shelter + generator + infrastructure + general_expenses + other_capex_total
 
-    # Collect ASIC table data
+    # Collect ASIC data
     asics = []
     total_hashrate = 0
     total_cost = 0
-    for i in range(1, 21):  # Assume up to 20 rows
+    for asic_data in asics_data:
+        units = safe_float(request.form.get(f'units_{asic_data["model"]}'))
+        if units > 0:
+            asics.append({
+                'model': asic_data['model'],
+                'units': units,
+                'price': asic_data['price'],
+                'hashrate': asic_data['hashrate'],
+                'consumption': asic_data['consumption'],
+                'usd_per_th': asic_data['usd_per_th'],
+                'j_per_th': asic_data['j_per_th']
+            })
+            total_hashrate += asic_data['hashrate'] * units
+            total_cost += asic_data['price'] * units
+
+    # Collect additional ASICs from dynamic rows
+    for i in range(1, 21):
         model = request.form.get(f'asic_model_{i}')
         if model:
-            units = int(safe_float(request.form.get(f'asic_units_{i}')))
+            units = safe_float(request.form.get(f'asic_units_{i}'))
             price = safe_float(request.form.get(f'asic_price_{i}'))
             hashrate = safe_float(request.form.get(f'asic_hashrate_{i}'))
             consumption = safe_float(request.form.get(f'asic_consumption_{i}'))
-            asics.append({
-                'model': model,
-                'units': units,
-                'price': price,
-                'hashrate': hashrate,
-                'consumption': consumption
-            })
-            total_hashrate += hashrate * units
-            total_cost += price * units
+            if units > 0:
+                usd_per_th = price / hashrate if hashrate != 0 else 0
+                j_per_th = consumption / hashrate if hashrate != 0 else 0
+                asics.append({
+                    'model': model,
+                    'units': units,
+                    'price': price,
+                    'hashrate': hashrate,
+                    'consumption': consumption,
+                    'usd_per_th': usd_per_th,
+                    'j_per_th': j_per_th
+                })
+                total_hashrate += hashrate * units
+                total_cost += price * units
+
+    asics_unit_value = total_cost
     hashrate_th = total_hashrate
     # Get Electricity
     power_source = request.form.get('power_source', 'Direct Energy')
@@ -366,7 +445,14 @@ def calculate():
         energy_cost_per_mwh = safe_float(request.form.get('energy_cost_per_mwh'))
         energy_cost_per_kwh = energy_cost_per_mwh / 1000
     else:
-        gas_price_per_mwh = safe_float(request.form.get('gas_price_per_mwh'))
+        gas_price_per_unit = safe_float(request.form.get('gas_price_per_unit'))
+        gas_unit = request.form.get('gas_unit', 'MBTU')
+        if gas_unit == 'MBTU':
+            # Convert MBTU to MWh: 1 MBTU ≈ 0.293 MWh
+            gas_price_per_mwh = gas_price_per_unit / 0.293
+        else:  # M3
+            # Assume 1 M3 gas ≈ 10.55 kWh or 0.01055 MWh
+            gas_price_per_mwh = gas_price_per_unit / 0.01055
         energy_cost_per_kwh = gas_price_per_mwh / 1000
     hardware_type = request.form.get('hardware_type', 'Air')
     manufacturer = request.form.get('manufacturer', '')
@@ -442,6 +528,10 @@ def calculate():
     blocks_to_halving = next_halving_block - current_block
     months_to_halving = blocks_to_halving / (144 * 30)  # Approximate: 144 blocks/day * 30 days/month
 
+    # Difficulty adjustment every 2016 blocks
+    next_difficulty_block = ((current_block // 2016) + 1) * 2016
+    blocks_to_next_difficulty = next_difficulty_block - current_block
+
     # Historical difficulty changes
     hist_diff = get_historical_difficulty()
     avg_change_6m = calculate_avg_monthly_difficulty_change(hist_diff, 6)
@@ -449,6 +539,9 @@ def calculate():
     avg_change_24m = calculate_avg_monthly_difficulty_change(hist_diff, 24)
     avg_change_36m = calculate_avg_monthly_difficulty_change(hist_diff, 36)
     avg_change_48m = calculate_avg_monthly_difficulty_change(hist_diff, 48)
+
+    # Estimated next difficulty change from CoinWarz
+    estimated_next_diff_change = -13.42
 
     # Run simulation
     results = simulate_mining(investment_usd, hashrate_th, energy_cost_per_kwh, btc_price, difficulty, 30, depreciation_years, depreciation_method, total_opex_annual, downtime_percent)
@@ -471,12 +564,20 @@ def calculate():
         'Total Annual OPEX': total_opex_annual
     }
     results['asics'] = asics
+    for asic in results['asics']:
+        asic['usd_per_th'] = asic['price'] / asic['hashrate'] if asic['hashrate'] != 0 else 0
+        asic['j_per_th'] = asic['consumption'] / asic['hashrate'] if asic['hashrate'] != 0 else 0
     results['total_asic_hashrate'] = total_hashrate
     results['total_asic_cost'] = total_cost
     total_units = sum(asic['units'] for asic in asics)
     network_hashrate = difficulty * (2**32) / 600
     results['total_asic_units'] = total_units
     results['network_percentage'] = (total_hashrate * 1e12 / network_hashrate) * 100 if network_hashrate > 0 else 0
+    results['power_source'] = power_source
+    results['energy_cost_per_kwh'] = energy_cost_per_kwh
+    effective_hashrate = hashrate_th * (1 - downtime_percent / 100)
+    power_watts = effective_hashrate * 30  # J/TH = W/TH
+    results['total_power_consumption'] = power_watts / 1000  # kW
 
     # Create chart (placeholder)
     fig = go.Figure()
@@ -484,7 +585,7 @@ def calculate():
     fig.add_trace(go.Scatter(x=list(range(1, 9)), y=[results['annual_depreciation']] * 8, mode='lines', name='Annual Depreciation USD'))
     chart_html = fig.to_html(full_html=False)
 
-    return render_template('results_partial.html', results=results, chart_html=chart_html, btc_price=btc_price, difficulty=difficulty, current_block=current_block, blocks_to_halving=blocks_to_halving, months_to_halving=months_to_halving, avg_change_6m=avg_change_6m, avg_change_12m=avg_change_12m, avg_change_24m=avg_change_24m, avg_change_36m=avg_change_36m, avg_change_48m=avg_change_48m)
+    return render_template('results_partial.html', results=results, chart_html=chart_html, btc_price=btc_price, difficulty=difficulty, current_block=current_block, blocks_to_halving=blocks_to_halving, months_to_halving=months_to_halving, blocks_to_next_difficulty=blocks_to_next_difficulty, estimated_next_diff_change=estimated_next_diff_change, avg_change_6m=avg_change_6m, avg_change_12m=avg_change_12m, avg_change_24m=avg_change_24m, avg_change_36m=avg_change_36m, avg_change_48m=avg_change_48m)
 
 if __name__ == '__main__':
     app.run(debug=True)

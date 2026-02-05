@@ -54,6 +54,60 @@
                         <h4>{{ "%.4f"|format(results.network_percentage) }}%</h4>
                         <p>% de la Red</p>
                     </div>
+    </div>
+
+            <h3 class="mt-4">Detalles de ASICs</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Modelo</th>
+                        <th>Unidades</th>
+                        <th>Precio ($)</th>
+                        <th>Hashrate (TH/s)</th>
+                        <th>Consumo (W)</th>
+                        <th>$/TH</th>
+                        <th>J/TH</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asic in results.asics %}
+                    <tr>
+                        <td>{{ asic.model }}</td>
+                        <td>{{ asic.units }}</td>
+                        <td>${{ asic.price }}</td>
+                        <td>{{ asic.hashrate }}</td>
+                        <td>{{ asic.consumption }}</td>
+                        <td>${{ "%.2f"|format(asic.usd_per_th) }}</td>
+                        <td>{{ "%.2f"|format(asic.j_per_th) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+    <h2 class="mb-4 mt-5">Resumen de Electricidad</h2>
+    <div class="card">
+        <div class="card-header">
+            <h5>Configuración de Energía</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h4>{{ results.power_source }}</h4>
+                        <p>Fuente de Energía</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h4>${{ "%.4f"|format(results.energy_cost_per_kwh) }}</h4>
+                        <p>Costo por kWh</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h4>{{ results.total_power_consumption }} kW</h4>
+                        <p>Consumo Total</p>
+                    </div>
                 </div>
             </div>
         </div>

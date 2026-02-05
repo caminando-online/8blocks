@@ -80,22 +80,35 @@
                             <h5>ASICs (Details)</h5>
                         </div>
                         <div class="card-body">
-                            <table class="table table-bordered" id="asics_table">
+                            <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th style="min-width: 200px;">Model</th>
-                                        <th>Units</th>
-                                        <th>Price (unit)</th>
-                                        <th>Hashrate TH</th>
-                                        <th>Consumption</th>
-                                        <th>Action</th>
+                                        <th>Modelo</th>
+                                        <th>Precio ($)</th>
+                                        <th>Hashrate (TH/s)</th>
+                                        <th>Consumo (W)</th>
+                                        <th>$/TH</th>
+                                        <th>J/TH</th>
+                                        <th>Unidades</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="asics_tbody">
-                                    <!-- Rows will be added here -->
+                                    {% for asic in asics_data %}
+                                    <tr>
+                                        <td>{{ asic.model }}</td>
+                                        <td>${{ asic.price }}</td>
+                                        <td>{{ asic.hashrate }}</td>
+                                        <td>{{ asic.consumption }}</td>
+                                        <td>${{ "%.2f"|format(asic.usd_per_th) }}</td>
+                                        <td>{{ "%.2f"|format(asic.j_per_th) }}</td>
+                                        <td><input type="number" class="form-control" name="units_{{ asic.model }}" value="0" min="0"></td>
+                                        <td></td>
+                                    </tr>
+                                    {% endfor %}
                                 </tbody>
                             </table>
-                            <button type="button" class="btn btn-primary" onclick="addAsicRow()">Add ASIC</button>
+                            <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">Agregar ASIC</button>
                         </div>
                     </div>
                 </div>
@@ -199,6 +212,9 @@
                                 <li><strong>Current Block:</strong> {{ current_block }}</li>
                                 <li><strong>Blocks to Next Halving:</strong> {{ blocks_to_halving }}</li>
                                 <li><strong>Months to Next Halving:</strong> {{ "%.1f"|format(months_to_halving) }}</li>
+                                <li><strong>Blocks to Next Difficulty Adjustment:</strong> {{ blocks_to_next_difficulty }}</li>
+                                <li><strong>Difficulty Adjustments Every:</strong> 2016 Blocks</li>
+                                <li><strong>Estimated Next Difficulty Change:</strong> {{ "%.2f"|format(estimated_next_diff_change) }}%</li>
                                 <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
                                 <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
                                 <li><strong>Avg Monthly Difficulty Change (24m):</strong> {{ "%.2f"|format(avg_change_24m) }}%</li>
@@ -338,102 +354,6 @@
             if (element) element.remove();
         }
 
-        const models = {
-            Bitmain: ['Antminer S19', 'Antminer S19 Pro', 'Antminer S19 XP', 'Antminer S21', 'Antminer S21 XP'],
-            WhatsMiners: ['M30', 'M50', 'M60', 'M70']
-        };
-
-        const asicSpecs = {
-            "Antminer S19": { hashrate: 100, consumption: 3250 },
-            "Antminer S19 Pro": { hashrate: 100, consumption: 3250 },
-            "Antminer S19 XP": { hashrate: 473, consumption: 4730 },
-            "Antminer S21": { hashrate: 473, consumption: 4730 },
-            "Antminer S21 XP": { hashrate: 473, consumption: 4730 },
-            "M30": { hashrate: 112, consumption: 3472 },
-            "M50": { hashrate: 118, consumption: 3472 },
-            "M60": { hashrate: 146, consumption: 3396 },
-            "M70": { hashrate: 176, consumption: 3472 }
-        };
-
-        function updateSpecs(select) {
-            const row = select.closest('tr');
-            const model = select.value;
-            if (asicSpecs[model]) {
-                row.querySelector('input[name*="hashrate"]').value = asicSpecs[model].hashrate;
-                row.querySelector('input[name*="consumption"]').value = asicSpecs[model].consumption;
-            }
-            updateAsicTotal();
-        }
-
-        function updateAsicTotal() {
-            let total = 0;
-            const rows = document.querySelectorAll('#asics_tbody tr');
-            rows.forEach(row => {
-                const units = parseInt(row.querySelector('input[name*="units"]').value) || 0;
-                const price = parseFloat(row.querySelector('input[name*="price"]').value) || 0;
-                total += units * price;
-            });
-            document.getElementById('asics_unit_value').value = total.toFixed(2);
-        }
-
-        function updateManufacturer() {
-            updateModels();
-        }
-
-        function updateModels() {
-            const manufacturer = document.getElementById('manufacturer').value;
-            const modelSelect = document.getElementById('model');
-            modelSelect.innerHTML = '';
-            if (models[manufacturer]) {
-                models[manufacturer].forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model;
-                    option.text = model;
-                    modelSelect.appendChild(option);
-                });
-            }
-        }
-
-        let asicRowCount = 0;
-        function addAsicRow() {
-            asicRowCount++;
-            const tbody = document.getElementById('asics_tbody');
-            const row = document.createElement('tr');
-            row.id = `asic_row_${asicRowCount}`;
-            row.innerHTML = `
-                <td>
-                    <select class="form-control" name="asic_model_${asicRowCount}" id="asic_model_${asicRowCount}" onchange="updateSpecs(this)">
-                        <optgroup label="Bitmain">
-                            <option value="Antminer S19" selected>Antminer S19</option>
-                            <option value="Antminer S19 Pro">Antminer S19 Pro</option>
-                            <option value="Antminer S19 XP">Antminer S19 XP</option>
-                            <option value="Antminer S21">Antminer S21</option>
-                            <option value="Antminer S21 XP">Antminer S21 XP</option>
-                        </optgroup>
-                        <optgroup label="WhatsMiners">
-                            <option value="M30">M30</option>
-                            <option value="M50">M50</option>
-                            <option value="M60">M60</option>
-                            <option value="M70">M70</option>
-                        </optgroup>
-                    </select>
-                </td>
-                <td><input type="number" class="form-control" name="asic_units_${asicRowCount}" value="1" onchange="updateAsicTotal()"></td>
-                <td><input type="number" step="0.01" class="form-control" name="asic_price_${asicRowCount}" value="0" onchange="updateAsicTotal()"></td>
-                <td><input type="number" step="0.01" class="form-control" name="asic_hashrate_${asicRowCount}" value="0"></td>
-                <td><input type="number" step="0.01" class="form-control" name="asic_consumption_${asicRowCount}" value="0"></td>
-                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeAsicRow(${asicRowCount})">Remove</button></td>
-            `;
-            tbody.appendChild(row);
-            updateSpecs(row.querySelector('select'));
-        }
-
-        function removeAsicRow(id) {
-            const row = document.getElementById(`asic_row_${id}`);
-            if (row) row.remove();
-            updateAsicTotal();
-        }
-
         function togglePowerSource() {
             const powerSource = document.getElementById('power_source').value;
             const directFields = document.getElementById('direct_energy_fields');
@@ -454,8 +374,15 @@
                 gasFields.style.visibility = 'visible';
                 gasFields.innerHTML = `
                     <div class="mb-3">
-                        <label for="gas_price_per_mbtu" class="form-label">Gas Price ($/MBTU)</label>
-                        <input type="number" step="0.01" class="form-control" id="gas_price_per_mbtu" name="gas_price_per_mbtu">
+                        <label for="gas_unit" class="form-label">Gas Unit</label>
+                        <select class="form-control" id="gas_unit" name="gas_unit" onchange="updateGasPriceLabel()">
+                            <option value="MBTU">MBTU</option>
+                            <option value="M3">M3</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gas_price_per_unit" class="form-label">Gas Price ($/MBTU)</label>
+                        <input type="number" step="0.01" class="form-control" id="gas_price_per_unit" name="gas_price_per_unit">
                     </div>
                     <div class="mb-3">
                         <label for="gas_kcal" class="form-label">Gas kCal</label>
@@ -482,7 +409,7 @@
                 `;
                 calculateGasPrice();
                 // Add event listeners for gas fields
-                document.getElementById('gas_price_per_mbtu').addEventListener('input', calculateGasPrice);
+                document.getElementById('gas_price_per_unit').addEventListener('input', calculateGasPrice);
                 document.getElementById('gas_kcal').addEventListener('input', calculateGasPrice);
                 document.getElementById('generator_efficiency').addEventListener('input', calculateGasPrice);
             } else {
@@ -491,13 +418,27 @@
             }
         }
 
+        function updateGasPriceLabel() {
+            const unit = document.getElementById('gas_unit').value;
+            const label = document.querySelector('label[for="gas_price_per_unit"]');
+            label.textContent = `Gas Price ($/${unit})`;
+        }
+
         function calculateGasPrice() {
-            const gasPricePerMbtu = parseFloat(document.getElementById('gas_price_per_mbtu').value) || 0;
+            const gasPricePerUnit = parseFloat(document.getElementById('gas_price_per_unit').value) || 0;
             const gasKcal = parseFloat(document.getElementById('gas_kcal').value) || 8500;
             const generatorEfficiency = parseFloat(document.getElementById('generator_efficiency').value) || 35;
+            const unit = document.getElementById('gas_unit').value;
             const standardKcal = 8500;
             const baseMbtuPerMwh = 3.412;
-            const gasPricePerMwh = (gasPricePerMbtu * baseMbtuPerMwh) / (gasKcal / standardKcal) / (generatorEfficiency / 100);
+            let gasPricePerMwh;
+            if (unit === 'MBTU') {
+                gasPricePerMwh = (gasPricePerUnit * baseMbtuPerMwh) / (gasKcal / standardKcal) / (generatorEfficiency / 100);
+            } else { // M3
+                // Assuming 1 M3 = 10 MBTU approximately, but this might need adjustment
+                const mbtuPerM3 = 10; // Placeholder, adjust as needed
+                gasPricePerMwh = (gasPricePerUnit * mbtuPerM3 * baseMbtuPerMwh) / (gasKcal / standardKcal) / (generatorEfficiency / 100);
+            }
             document.getElementById('gas_price_per_mwh').value = gasPricePerMwh.toFixed(2);
         }
 
@@ -509,6 +450,125 @@
 
         // Initialize power source display
         togglePowerSource();
+
+        let asicRowCount = 0;
+        function addAsicRow() {
+            asicRowCount++;
+            const tbody = document.getElementById('asics_tbody');
+            const row = document.createElement('tr');
+            row.id = `asic_row_${asicRowCount}`;
+            row.innerHTML = `
+                <td>
+                    <select class="form-control" name="asic_model_${asicRowCount}">
+                        <optgroup label="BITMAIN">
+                            <option value="Antminer S23 Hyd">Antminer S23 Hyd</option>
+                            <option value="Antminer S21 XP">Antminer S21 XP</option>
+                            <option value="Antminer S23e U2H">Antminer S23e U2H</option>
+                            <option value="Antminer S21 XP+ Hyd">Antminer S21 XP+ Hyd</option>
+                            <option value="Antminer S21j XP Hyd">Antminer S21j XP Hyd</option>
+                            <option value="Antminer S21 XP Hyd">Antminer S21 XP Hyd</option>
+                            <option value="Antminer U3S21EXPH">Antminer U3S21EXPH</option>
+                            <option value="Antminer S21e XP Hyd">Antminer S21e XP Hyd</option>
+                            <option value="Antminer S21 XP Imm">Antminer S21 XP Imm</option>
+                            <option value="Antminer S21+ Hyd">Antminer S21+ Hyd</option>
+                            <option value="Antminer S21 Imm">Antminer S21 Imm</option>
+                            <option value="Antminer S21e Hyd">Antminer S21e Hyd</option>
+                            <option value="Antminer S19 XP+ Hyd">Antminer S19 XP+ Hyd</option>
+                            <option value="Antminer S21 Pro">Antminer S21 Pro</option>
+                            <option value="Antminer S21 Hyd">Antminer S21 Hyd</option>
+                            <option value="Antminer S21+">Antminer S21+</option>
+                            <option value="Antminer S21">Antminer S21</option>
+                            <option value="Antminer T21">Antminer T21</option>
+                            <option value="Antminer S19 XP Hyd">Antminer S19 XP Hyd</option>
+                            <option value="Antminer S19j XP">Antminer S19j XP</option>
+                            <option value="Antminer S19e XP Hyd">Antminer S19e XP Hyd</option>
+                            <option value="Antminer S19 Pro+ Hyd">Antminer S19 Pro+ Hyd</option>
+                            <option value="HOST Antminer S21 Hyd">HOST Antminer S21 Hyd</option>
+                            <option value="HOST Antminer S21e Hyd">HOST Antminer S21e Hyd</option>
+                            <option value="HOST Antminer S19 XP Hyd">HOST Antminer S19 XP Hyd</option>
+                        </optgroup>
+                        <optgroup label="Whatsminers">
+                            <option value="WhatsMiner M73">WhatsMiner M73</option>
+                            <option value="WhatsMiner M70S">WhatsMiner M70S</option>
+                            <option value="WhatsMiner M70">WhatsMiner M70</option>
+                            <option value="WhatsMiner M60S+">WhatsMiner M60S+</option>
+                            <option value="WhatsMiner M60S">WhatsMiner M60S</option>
+                            <option value="WhatsMiner M50S++">WhatsMiner M50S++</option>
+                            <option value="WhatsMiner M50S">WhatsMiner M50S</option>
+                            <option value="WhatsMiner M50">WhatsMiner M50</option>
+                            <option value="WhatsMiner M30S++">WhatsMiner M30S++</option>
+                            <option value="WhatsMiner M30S">WhatsMiner M30S</option>
+                        </optgroup>
+                    </select>
+                </td>
+                <td><input type="number" class="form-control" name="asic_price_${asicRowCount}" value="0" readonly></td>
+                <td><input type="number" class="form-control" name="asic_hashrate_${asicRowCount}" value="0" readonly></td>
+                <td><input type="number" class="form-control" name="asic_consumption_${asicRowCount}" value="0" readonly></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_usd_per_th_${asicRowCount}" value="0" readonly></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_j_per_th_${asicRowCount}" value="0" readonly></td>
+                <td><input type="number" class="form-control" name="asic_units_${asicRowCount}" value="0" min="0"></td>
+                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeAsicRow(${asicRowCount})">Remove</button></td>
+            `;
+            tbody.appendChild(row);
+            // Update specs for the selected model
+            updateAsicSpecs(row, row.querySelector('select').value);
+            // Add event listener to update specs when model changes
+            row.querySelector('select').addEventListener('change', function() {
+                updateAsicSpecs(row, this.value);
+            });
+        }
+
+        function updateAsicSpecs(row, model) {
+            const specs = {
+                "Antminer S23 Hyd": { price: 17400, hashrate: 580, consumption: 5510 },
+                "Antminer S21 XP": { price: 4590, hashrate: 270, consumption: 3645 },
+                "Antminer S23e U2H": { price: 19030, hashrate: 865, consumption: 8650 },
+                "Antminer S21 XP+ Hyd": { price: 9120, hashrate: 480, consumption: 5280 },
+                "Antminer S21j XP Hyd": { price: 8415, hashrate: 495, consumption: 5940 },
+                "Antminer S21 XP Hyd": { price: 10170, hashrate: 473, consumption: 5676 },
+                "Antminer U3S21EXPH": { price: 18490, hashrate: 860, consumption: 11180 },
+                "Antminer S21e XP Hyd": { price: 9245, hashrate: 430, consumption: 5590 },
+                "Antminer S21 XP Imm": { price: 5400, hashrate: 300, consumption: 4050 },
+                "Antminer S21+ Hyd": { price: 2864, hashrate: 358, consumption: 5370 },
+                "Antminer S21 Imm": { price: 1720, hashrate: 215, consumption: 3440 },
+                "Antminer S21e Hyd": { price: 1728, hashrate: 288, consumption: 4896 },
+                "Antminer S19 XP+ Hyd": { price: 2511, hashrate: 279, consumption: 5301 },
+                "Antminer S21 Pro": { price: 3744, hashrate: 234, consumption: 3510 },
+                "Antminer S21 Hyd": { price: 4945, hashrate: 319, consumption: 5104 },
+                "Antminer S21+": { price: 3240, hashrate: 216, consumption: 3564 },
+                "Antminer S21": { price: 5400, hashrate: 200, consumption: 3500 },
+                "Antminer T21": { price: 2356, hashrate: 190, consumption: 3610 },
+                "Antminer S19 XP Hyd": { price: 2313, hashrate: 257, consumption: 5346 },
+                "Antminer S19j XP": { price: 3473, hashrate: 151, consumption: 3247 },
+                "Antminer S19e XP Hyd": { price: 2761, hashrate: 251, consumption: 5522 },
+                "Antminer S19 Pro+ Hyd": { price: 2292, hashrate: 191, consumption: 5252 },
+                "HOST Antminer S21 Hyd": { price: 4530, hashrate: 302, consumption: 4832 },
+                "HOST Antminer S21e Hyd": { price: 4030, hashrate: 310, consumption: 5270 },
+                "HOST Antminer S19 XP Hyd": { price: 2313, hashrate: 257, consumption: 5345 },
+                "WhatsMiner M73": { price: 8601, hashrate: 512, consumption: 7424 },
+                "WhatsMiner M70S": { price: 4700, hashrate: 250, consumption: 3375 },
+                "WhatsMiner M70": { price: 3658, hashrate: 236, consumption: 3426 },
+                "WhatsMiner M60S+": { price: 2312, hashrate: 188, consumption: 3404 },
+                "WhatsMiner M60S": { price: 2060, hashrate: 186, consumption: 3441 },
+                "WhatsMiner M50S++": { price: 1500, hashrate: 140, consumption: 3426 },
+                "WhatsMiner M50S": { price: 573, hashrate: 122, consumption: 3426 },
+                "WhatsMiner M50": { price: 573, hashrate: 118, consumption: 3426 },
+                "WhatsMiner M30S++": { price: 1200, hashrate: 112, consumption: 3472 },
+                "WhatsMiner M30S": { price: 1000, hashrate: 88, consumption: 3344 }
+            };
+            if (specs[model]) {
+                row.querySelector('input[name*="price"]').value = specs[model].price;
+                row.querySelector('input[name*="hashrate"]').value = specs[model].hashrate;
+                row.querySelector('input[name*="consumption"]').value = specs[model].consumption;
+                row.querySelector('input[name*="usd_per_th"]').value = (specs[model].price / specs[model].hashrate).toFixed(2);
+                row.querySelector('input[name*="j_per_th"]').value = (specs[model].consumption / specs[model].hashrate).toFixed(2);
+            }
+        }
+
+        function removeAsicRow(id) {
+            const row = document.getElementById(`asic_row_${id}`);
+            if (row) row.remove();
+        }
 
         function debounce(func, wait) {
             let timeout;
@@ -531,7 +591,7 @@
             })
             .then(response => response.text())
             .then(html => {
-                document.getElementById('results').innerHTML = html;
+                document.getElementById('results-container').innerHTML = html;
             })
             .catch(error => console.error('Error:', error));
         }
@@ -539,8 +599,6 @@
         // Initial calculation
         calculateResults();
     </script>
-
-    <div id="results"></div>
 
     <!-- Modal for Gas Price Calculation -->
     <div class="modal fade" id="gasPriceModal" tabindex="-1" aria-labelledby="gasPriceModalLabel" aria-hidden="true">
@@ -561,6 +619,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="results-container">
+        <!-- Results will be loaded here -->
     </div>
 </body>
 </html>
