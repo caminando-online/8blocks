@@ -1,29 +1,37 @@
 <div class="container mt-5">
     <h2 class="mb-4">Resumen de CAPEX</h2>
     <div class="card">
-        <div class="card-header">
-            <h5>Desglose de Gastos de Capital (CAPEX)</h5>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Desglose de Gastos de Capital (CAPEX)</h5>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="calculateResults()">Update data</button>
         </div>
+
         <div class="card-body">
             <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Concepto</th>
                         <th>Monto (USD)</th>
+                        <th>Monto (BTC)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for key, value in results.capex_breakdown.items() %}
+                    {% if key != 'Total' %}
                     <tr>
                         <td>{{ key }}</td>
                         <td>${{ value }}</td>
+                        <td>{{ "%.8f"|format(value / btc_price) }} BTC</td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
+
                 <tfoot>
                     <tr class="table-dark">
                         <th>Total CAPEX</th>
                         <th>${{ results.capex_breakdown['Total'] }}</th>
+                        <th>{{ "%.8f"|format(results.capex_breakdown['Total'] / btc_price) }} BTC</th>
                     </tr>
                 </tfoot>
             </table>
