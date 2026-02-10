@@ -6,6 +6,80 @@
     <title>Bitcoin Mining Farm Calculator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --card-border: rgba(0,0,0,.125);
+            --input-bg: #ffffff;
+            --input-text: #212529;
+            --header-bg: rgba(0,0,0,.03);
+            --header-text: #212529;
+            --accent-color: #0d6efd;
+        }
+
+        [data-bs-theme="dark"] {
+            --bg-color: #1a1d20;
+            --text-color: #e9ecef;
+            --card-bg: #2b3035;
+            --card-border: rgba(255,255,255,.125);
+            --input-bg: #343a40;
+            --input-text: #f8f9fa;
+            --header-bg: rgba(255,255,255,.05);
+            --header-text: #f8f9fa;
+            --accent-color: #3786fb;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-color: var(--card-border);
+            color: var(--text-color);
+        }
+
+        .card-header {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            border-bottom-color: var(--card-border);
+        }
+
+        .form-control, .form-select {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border-color: var(--card-border);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+        }
+
+        .form-control:disabled, .form-control[readonly] {
+            background-color: var(--header-bg);
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .input-group-text {
+            background-color: var(--header-bg);
+            color: var(--text-color);
+            border-color: var(--card-border);
+        }
+
+        .table {
+            color: var(--text-color);
+        }
+
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            --bs-table-accent-bg: var(--header-bg);
+            color: var(--text-color);
+        }
+
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -13,10 +87,44 @@
         }
         input[type=number] {
             -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        #theme-toggle:hover {
+            transform: scale(1.1);
         }
     </style>
 </head>
-<body>
+<body data-bs-theme="light">
+    <button id="theme-toggle" class="btn btn-outline-secondary" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+        <span id="theme-icon">🌙</span>
+    </button>
+    <script>
+        // Apply theme as soon as possible to avoid flash
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-bs-theme', savedTheme);
+            const icon = savedTheme === 'dark' ? '☀️' : '🌙';
+            // Note: button and icon might not be in DOM yet if this runs at top
+        })();
+    </script>
     <div class="container mt-5">
         <h1>Bitcoin Mining Farm Business Model Calculator</h1>
         <form method="POST">
@@ -198,7 +306,7 @@
                         </div>
                         <div class="card-body">
                             <ul class="list-unstyled">
-                                <li><strong>BTC Price:</strong> $<span id="val_btc_price">{{ btc_price }}</span></li>
+                                <li><strong>BTC Price:</strong> $<span id="val_btc_price" data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
                                 <li><strong>Current Difficulty:</strong> <span id="val_difficulty">{{ difficulty }}</span></li>
                                 <li><strong>Current Block:</strong> <span id="val_block">{{ current_block }}</span></li>
                                 <li><strong>Blocks to Next Halving:</strong> <span id="val_blocks_to_halving">{{ blocks_to_halving }}</span></li>
@@ -246,8 +354,8 @@
                                     <div class="row">
                                         {% for i in range(1, 9) %}
                                         <div class="col-md-3 mb-2">
-                                            <label class="form-label small">Year {{ i }}</label>
-                                            <input type="text" class="form-control form-control-sm price-input" name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0,00" onfocus="handlePriceFocus(this)" onblur="handlePriceBlur(this)" oninput="syncManualPrices({{ i }}, 'price')">
+                                            <label for="manual_price_{{ i }}" class="form-label small">Year {{ i }}</label>
+                                            <input type="text" class="form-control form-control-sm price-input" name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0,00" onfocus="handlePriceFocus(this)" onblur="handlePriceBlur(this)" oninput="syncManualPrices('{{ i }}', 'price')">
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -275,7 +383,7 @@
                                 <div class="row">
                                     {% for i in range(1, 9) %}
                                     <div class="col-md-3 mb-2">
-                                        <label class="form-label small">Year {{ i }} (Monthly %)</label>
+                                        <label for="manual_diff_var_{{ i }}" class="form-label small">Year {{ i }} (Monthly %)</label>
                                         <input type="number" step="0.01" class="form-control form-control-sm" name="manual_diff_var_{{ i }}" id="manual_diff_var_{{ i }}" value="0.00" oninput="debounce(calculateResults, 500)()">
                                     </div>
                                     {% endfor %}
@@ -311,52 +419,58 @@
 
         </form>
     </div>
-    <script>
-        function formatDisplayCurrency(value) {
-            if (isNaN(value) || value === null) return "0,00";
-            return new Intl.NumberFormat('de-DE', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(value);
-        }
 
-        function parseDisplayCurrency(str) {
-            if (!str) return 0;
-            // Remove dots (thousands) and replace comma with dot (decimal)
-            let clean = str.toString().replace(/\./g, '').replace(',', '.');
-            return parseFloat(clean) || 0;
-        }
-
-        function handlePriceFocus(el) {
-            const val = parseDisplayCurrency(el.value);
-            el.value = val === 0 ? '' : val.toFixed(2);
-        }
-
-        function handlePriceBlur(el) {
-            el.value = formatDisplayCurrency(parseFloat(el.value) || parseDisplayCurrency(el.value));
-        }
-
-        function togglePriceMethod() {
-            const method = document.getElementById('price_method').value;
-            const manualFields = document.getElementById('manual_price_fields');
-            const backlogInfo = document.getElementById('backlog_info');
-            
-            if (method === 'manual') {
-                manualFields.style.display = 'block';
-                backlogInfo.style.display = 'none';
-            } else {
-                manualFields.style.display = 'block'; // Keep it visible but maybe dimmed or informative? 
-                // Wait, user said "debe ser visible debajo del recuadro azul... los precios calculados"
-                // Actually I should show the calculated prices in the manual fields OR in a separate list.
-                // Manual fields are easier to see. But user asked for them BELOW the blue box.
-                manualFields.style.display = 'none';
-                backlogInfo.style.display = 'block';
-                updateBacklogProjections();
-            }
-            debounce(calculateResults, 500)();
-        }
-
-        const PRICE_BACKLOG = {{ [
+    <!-- Data for JavaScript from Backend -->
+    <script id="price-backlog-data" type="application/json">
+        {{ [
+          {"year": 2018, "month": 1, "change_pct": -25.36},
+          {"year": 2018, "month": 2, "change_pct": 14.02},
+          {"year": 2018, "month": 3, "change_pct": -36.63},
+          {"year": 2018, "month": 4, "change_pct": 35.63},
+          {"year": 2018, "month": 5, "change_pct": -17.56},
+          {"year": 2018, "month": 6, "change_pct": -15.22},
+          {"year": 2018, "month": 7, "change_pct": 21.44},
+          {"year": 2018, "month": 8, "change_pct": -7.52},
+          {"year": 2018, "month": 9, "change_pct": -8.17},
+          {"year": 2018, "month": 10, "change_pct": -3.89},
+          {"year": 2018, "month": 11, "change_pct": -37.36},
+          {"year": 2018, "month": 12, "change_pct": -11.11},
+          {"year": 2019, "month": 1, "change_pct": -10.45},
+          {"year": 2019, "month": 2, "change_pct": 10.10},
+          {"year": 2019, "month": 3, "change_pct": 7.44},
+          {"year": 2019, "month": 4, "change_pct": 27.26},
+          {"year": 2019, "month": 5, "change_pct": 60.98},
+          {"year": 2019, "month": 6, "change_pct": 26.74},
+          {"year": 2019, "month": 7, "change_pct": -4.83},
+          {"year": 2019, "month": 8, "change_pct": -7.65},
+          {"year": 2019, "month": 9, "change_pct": -15.17},
+          {"year": 2019, "month": 10, "change_pct": 10.11},
+          {"year": 2019, "month": 11, "change_pct": -18.32},
+          {"year": 2019, "month": 12, "change_pct": -3.37},
+          {"year": 2020, "month": 1, "change_pct": 30.49},
+          {"year": 2020, "month": 2, "change_pct": -8.52},
+          {"year": 2020, "month": 3, "change_pct": -24.69},
+          {"year": 2020, "month": 4, "change_pct": 30.25},
+          {"year": 2020, "month": 5, "change_pct": 6.53},
+          {"year": 2020, "month": 6, "change_pct": -10.35},
+          {"year": 2020, "month": 7, "change_pct": 22.69},
+          {"year": 2020, "month": 8, "change_pct": -1.01},
+          {"year": 2020, "month": 9, "change_pct": -10.01},
+          {"year": 2020, "month": 10, "change_pct": 30.18},
+          {"year": 2020, "month": 11, "change_pct": 43.15},
+          {"year": 2020, "month": 12, "change_pct": 54.21},
+          {"year": 2021, "month": 1, "change_pct": 12.86},
+          {"year": 2021, "month": 2, "change_pct": 35.12},
+          {"year": 2021, "month": 3, "change_pct": 18.45},
+          {"year": 2021, "month": 4, "change_pct": -1.83},
+          {"year": 2021, "month": 5, "change_pct": -35.52},
+          {"year": 2021, "month": 6, "change_pct": -5.65},
+          {"year": 2021, "month": 7, "change_pct": 25.06},
+          {"year": 2021, "month": 8, "change_pct": 13.76},
+          {"year": 2021, "month": 9, "change_pct": -9.30},
+          {"year": 2021, "month": 10, "change_pct": 27.78},
+          {"year": 2021, "month": 11, "change_pct": -6.54},
+          {"year": 2021, "month": 12, "change_pct": -18.93},
           {"year": 2022, "month": 1, "change_pct": -16.7},
           {"year": 2022, "month": 2, "change_pct": 12.2},
           {"year": 2022, "month": 3, "change_pct": 5.4},
@@ -405,12 +519,97 @@
           {"year": 2025, "month": 10, "change_pct": 15.0},
           {"year": 2025, "month": 11, "change_pct": -20.0},
           {"year": 2025, "month": 12, "change_pct": 10.0}
-        ]|tojson|safe }};
+        ]|tojson|safe }}
+    </script>
+    <script id="asic-data" type="application/json">
+        {{ asics_data|tojson|safe }}
+    </script>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            const iconSpan = document.getElementById('theme-icon');
+            if (iconSpan) {
+                iconSpan.innerText = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            updateThemeIcon(savedTheme);
+        });
+
+        function formatDisplayCurrency(value) {
+            if (isNaN(value) || value === null) return "0,00";
+            return new Intl.NumberFormat('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        function parseDisplayCurrency(str) {
+            if (typeof str === 'number') return str;
+            if (!str) return 0;
+            
+            // If it's just a number with a dot (English style from server or override)
+            // and NO comma, we should not remove the dot.
+            if (str.toString().includes('.') && !str.toString().includes(',')) {
+                // Check if it has multiple dots (thousands)
+                if ((str.match(/\./g) || []).length === 1) {
+                    return parseFloat(str) || 0;
+                }
+            }
+
+            // Remove dots (thousands) and replace comma with dot (decimal)
+            let clean = str.toString().replace(/\./g, '').replace(',', '.');
+            return parseFloat(clean) || 0;
+        }
+
+        function handlePriceFocus(el) {
+            const val = parseDisplayCurrency(el.value);
+            el.value = val === 0 ? '' : val.toFixed(2);
+        }
+
+        function handlePriceBlur(el) {
+            el.value = formatDisplayCurrency(parseFloat(el.value) || parseDisplayCurrency(el.value));
+        }
+
+        function togglePriceMethod() {
+            const method = document.getElementById('price_method').value;
+            const manualFields = document.getElementById('manual_price_fields');
+            const backlogInfo = document.getElementById('backlog_info');
+            
+            if (method === 'manual') {
+                manualFields.style.display = 'block';
+                backlogInfo.style.display = 'none';
+            } else {
+                manualFields.style.display = 'block'; // Keep it visible but maybe dimmed or informative? 
+                // Wait, user said "debe ser visible debajo del recuadro azul... los precios calculados"
+                // Actually I should show the calculated prices in the manual fields OR in a separate list.
+                // Manual fields are easier to see. But user asked for them BELOW the blue box.
+                manualFields.style.display = 'none';
+                backlogInfo.style.display = 'block';
+                updateBacklogProjections();
+            }
+            debounce(calculateResults, 500)();
+        }
+
+        const PRICE_BACKLOG = JSON.parse(document.getElementById('price-backlog-data').textContent);
 
         function syncManualPrices(year, type) {
+            const startYear = parseInt(year);
             const startPrice = parseFloat(document.getElementById('btc_price_override').value) || parseFloat(document.getElementById('val_btc_price').innerText);
             
-            for (let i = year; i <= 8; i++) {
+            for (let i = startYear; i <= 8; i++) {
                 const currentPriceEl = document.getElementById(`manual_price_${i}`);
                 const currentVarEl = document.getElementById(`manual_variation_${i}`);
                 const prevPrice = i === 1 ? startPrice : parseDisplayCurrency(document.getElementById(`manual_price_${i-1}`).value);
@@ -426,8 +625,8 @@
                         currentPriceEl.value = formatDisplayCurrency(Math.round(prevPrice * (1 + vari / 100)));
                     }
                 } else {
-                    const currentVarEl = document.getElementById(`manual_variation_${idx}`);
-                    const vari = currentVarEl ? (parseFloat(currentVarEl.value) || 0) : 0;
+                    const currentVarElLoop = document.getElementById(`manual_variation_${i}`);
+                    const vari = currentVarElLoop ? (parseFloat(currentVarElLoop.value) || 0) : 0;
                     currentPriceEl.value = formatDisplayCurrency(Math.round(prevPrice * (1 + vari / 100)));
                 }
             }
@@ -436,9 +635,17 @@
 
 
         function syncBacklogModifier(year, type) {
-            const startPrice = parseFloat(document.getElementById('btc_price_override').value) || parseFloat(document.getElementById('val_btc_price').innerText);
+            const startYear = parseInt(year);
+            const overrideVal = document.getElementById('btc_price_override').value;
+            let startPrice;
+            if (overrideVal) {
+                startPrice = parseFloat(overrideVal);
+            } else {
+                const el = document.getElementById('val_btc_price');
+                startPrice = parseFloat(el.dataset.raw) || parseDisplayCurrency(el.innerText);
+            }
             
-            for (let i = year; i <= 8; i++) {
+            for (let i = startYear; i <= 8; i++) {
                 const currentPriceEl = document.getElementById(`backlog_price_${i}`);
                 const currentModEl = document.getElementById(`backlog_modifier_${i}`);
                 const baseVar = parseFloat(currentModEl.dataset.baseVar) || 0;
@@ -466,13 +673,22 @@
         }
 
         function updateBacklogProjections() {
-            const startPrice = parseFloat(document.getElementById('btc_price_override').value) || parseFloat(document.getElementById('val_btc_price').innerText);
+            const overrideVal = document.getElementById('btc_price_override').value;
+            let startPrice;
+            
+            if (overrideVal) {
+                startPrice = parseFloat(overrideVal);
+            } else {
+                const el = document.getElementById('val_btc_price');
+                startPrice = parseFloat(el.dataset.raw) || parseDisplayCurrency(el.innerText);
+            }
+            
             let currentPrice = startPrice;
             let prices = [];
             let baseVariations = [];
             
             for (let i = 0; i < 96; i++) {
-                const backlogIdx = i % 48;
+                const backlogIdx = i % PRICE_BACKLOG.length;
                 const changePct = PRICE_BACKLOG[backlogIdx].change_pct;
                 currentPrice = currentPrice * (1 + changePct / 100);
                 
@@ -487,11 +703,12 @@
             prices.forEach((price, idx) => {
                 const i = idx + 1;
                 const baseVar = baseVariations[idx];
+                const histYear = PRICE_BACKLOG[idx * 12].year;
                 const formattedPrice = formatDisplayCurrency(price);
                 html += `
                     <div class="col-md-6 mb-2">
-                        <div class="p-2 border rounded bg-white">
-                            <label class="form-label small fw-bold mb-1">Year ${i} (Base: ${baseVar}%)</label>
+                        <div class="p-2 border rounded card">
+                            <label for="backlog_modifier_${i}" class="form-label small fw-bold mb-1">Year ${i} (Base ${histYear}: ${baseVar}%)</label>
                             <div class="row g-1">
                                 <div class="col-4">
                                     <div class="input-group input-group-sm">
@@ -525,7 +742,10 @@
                     if (data.error) {
                         alert("Error actualizando datos: " + data.error);
                     } else {
-                        document.getElementById('val_btc_price').innerText = data.btc_price;
+                        const priceEl = document.getElementById('val_btc_price');
+                        priceEl.innerText = formatDisplayCurrency(data.btc_price);
+                        priceEl.dataset.raw = data.btc_price;
+                        
                         document.getElementById('val_difficulty').innerText = data.difficulty;
                         document.getElementById('val_block').innerText = data.current_block;
                         document.getElementById('val_blocks_to_halving').innerText = data.blocks_to_halving;
@@ -754,7 +974,7 @@
         });
 
         // Inject ASIC Data from Backend
-        const ASIC_DATA = {{ asics_data|tojson|safe }};
+        const ASIC_DATA = JSON.parse(document.getElementById('asic-data').textContent);
 
         let asicRowCount = 0;
         function addAsicRow() {
@@ -870,6 +1090,7 @@
             .then(response => response.text())
             .then(html => {
                 document.getElementById('results-container').innerHTML = html;
+                if (typeof initPopovers === 'function') initPopovers();
             })
             .catch(error => console.error('Error:', error));
         }
@@ -910,5 +1131,19 @@
     <div id="results-container">
         <!-- Results will be loaded here -->
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function initPopovers() {
+            const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            popoverTriggerList.map(function (popoverTriggerEl) {
+                return new bootstrap.Popover(popoverTriggerEl, {
+                    trigger: 'hover',
+                    placement: 'top',
+                    container: 'body',
+                    html: true
+                });
+            });
+        }
+    </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 ---
 name: arquitecto-python-backend-pro
-description: Autoridad máxima en arquitectura Clean para Python/Flask. Enforza seguridad defensiva, validación estricta, trazabilidad absoluta y separación estricta entre dominio y persistencia. Especializado en aplicaciones financieras de minería Bitcoin.
+description: Autoridad máxima en arquitectura Clean para Python/Flask. Aplica seguridad defensiva, validación estricta, trazabilidad absoluta y separación estricta entre dominio y persistencia. Especializado en aplicaciones financieras de minería Bitcoin.
 ---
 
 # 🏛️ Arquitecto Backend Python - Profesional
@@ -328,7 +328,7 @@ Presentation → Application → Domain ← Infrastructure
 
 ### 3.3 Integridad Transaccional
 
-**Situación actual:** No aplica (no hay múltiples writes)
+**Situación actual:** Parcialmente implementada (Actualización de ASICs activa via UC-04).
 
 **Si se implementa persistencia:**
 - Operaciones que modifican múltiples tablas deben ser transaccionales
@@ -906,9 +906,9 @@ Tasa que hace NPV = 0
 
 **Problema:** Una clase que hace demasiadas cosas.
 
-**En este proyecto:** `app.py` actual de 668 líneas es un God Module.
+**En este proyecto:** Anteriormente `app.py` era un God Module; ahora el proyecto está refactorizado en `src/` siguiendo Clean Architecture.
 
-**Solución:** Separar en múltiples módulos con responsabilidades claras.
+**Solución:** Mantener la separación de responsabilidades y evitar que los archivos en `src/presentation/routes/` crezcan excesivamente.
 
 ---
 

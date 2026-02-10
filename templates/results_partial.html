@@ -38,6 +38,53 @@
         </div>
     </div>
 
+    <h2 class="mb-4 mt-5">Resumen de OPEX</h2>
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Gastos Operativos (OPEX)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Concepto</th>
+                        <th>Monto Mensual (USD)</th>
+                        <th>Monto Anual (USD)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Total para sueldos</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.staff_monthly) }}</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.staff_annual) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Total para servicios</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.services_monthly) }}</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.services_annual) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Total para otros</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.other_monthly) }}</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.other_annual) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Mantenimiento Energía (O&M)</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.energy_om_monthly) }}</td>
+                        <td>${{ "%.2f"|format(results.opex_summary.energy_om_annual) }}</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="table-dark">
+                        <th>Total OPEX</th>
+                        <th>${{ "%.2f"|format(results.opex_summary.monthly_total) }}</th>
+                        <th>${{ "%.2f"|format(results.opex_summary.annual_total) }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
     <h2 class="mb-4 mt-5">Resumen de ASIC Details</h2>
     <div class="card">
         <div class="card-header">
@@ -99,22 +146,49 @@
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="text-center">
-                        <h4>{{ results.power_source }}</h4>
-                        <p>Fuente de Energía</p>
+                        <h4 class="text-primary">{{ results.power_source }}</h4>
+                        <p class="text-muted small">Fuente de Energía</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h4>{{ results.total_power_consumption }} MW</h4>
+                        <p class="text-muted small">Consumo Total</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center" data-bs-toggle="popover" title="Pure MWh Cost" data-bs-content="Base price level for electrical energy set for 1 Megawatt-hour. <br><b>Calculation:</b> ${{ "%.2f"|format(results.energy_cost_per_mwh_pure) }} per MWh.">
+                        <h4>${{ "%.2f"|format(results.energy_cost_per_mwh_pure) }}</h4>
+                        <p class="text-muted small">Costo MWh Puro</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center" data-bs-toggle="popover" title="OPC/h ($/MWh)" data-bs-content="Unified real cost per MWh, combining energy and operation. <br><b>Calculation:</b> (${{ "%.2f"|format(results.total_hourly_cost) }} hourly cost) / {{ "%.4f"|format(results.total_power_consumption) }} MW = ${{ "%.2f"|format(results.opc_per_h) }} per MWh.">
+                        <h4 class="text-success">${{ "%.2f"|format(results.opc_per_h) }}</h4>
+                        <p class="text-muted small"><strong>OPC/h ($/MWh)</strong></p>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <div class="text-center" data-bs-toggle="popover" title="Hourly Energy Cost" data-bs-content="Pure electricity cost incurred every hour based on current farm power. <br><b>Calculation:</b> ${{ "%.2f"|format(results.energy_cost_per_mwh_pure) }}/MWh * {{ "%.4f"|format(results.total_power_consumption) }} MW = ${{ "%.2f"|format(results.hourly_energy_cost) }} per hour.">
+                        <h5>${{ "%.2f"|format(results.hourly_energy_cost) }}</h5>
+                        <p class="text-muted mb-0 small">Costo Energía / h</p>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="text-center">
-                        <h4>${{ "%.4f"|format(results.energy_cost_per_kwh) }}</h4>
-                        <p>Costo por kWh</p>
+                    <div class="text-center" data-bs-toggle="popover" title="Hourly OPEX" data-bs-content="Fixed operational expense for every hour. Calculated as Monthly OPEX / 729.84 hours. <br><b>Calculation:</b> ${{ "%.2f"|format(results.monthly_opex or 0) }} monthly / 729.84h = ${{ "%.2f"|format(results.hourly_opex) }} per hour.">
+                        <h5>${{ "%.2f"|format(results.hourly_opex) }}</h5>
+                        <p class="text-muted mb-0 small">OPEX Horario / h</p>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="text-center">
-                        <h4>{{ results.total_power_consumption }} kW</h4>
-                        <p>Consumo Total</p>
+                    <div class="text-center" data-bs-toggle="popover" title="Total Hourly Cost" data-bs-content="The exact sum of what it costs to keep the farm powered and operational for one hour. <br><b>Calculation:</b> ${{ "%.2f"|format(results.hourly_energy_cost) }} energy + ${{ "%.2f"|format(results.hourly_opex) }} OPEX = ${{ "%.2f"|format(results.total_hourly_cost) }} per hour.">
+                        <h5>${{ "%.2f"|format(results.total_hourly_cost) }}</h5>
+                        <p class="text-muted mb-0 small text-primary"><strong>Costo Total Horario</strong></p>
                     </div>
                 </div>
             </div>
