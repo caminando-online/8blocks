@@ -36,18 +36,30 @@ class MiningSimulationService:
         self._current_year_drift = Decimal('1')
         
         # 8-year monthly simulation
+        annual_results = []
+        year_btc = Decimal('0')
+        year_revenue = Decimal('0')
+        year_difficulty_sum = Decimal('0')
+        year_had_halving = False
+        
+        simulation_block = network.current_block
+        
         for month_idx in range(params.years * 12):
             year_idx = month_idx // 12
             month_of_year = month_idx % 12
             
             if params.price_mode == PriceProjectionMode.MANUAL:
-                # Use provided annual price for the entire year
-                if year_idx < len(params.manual_prices):
+                # Use provided annual price for the entire year if > 0
+                if year_idx < len(params.manual_prices) and params.manual_prices[year_idx] > 0:
                     current_price = params.manual_prices[year_idx]
+                else:
+                    # Fallback hierarchy: Override or Current Price
+                    current_price = network.price_btc_usd
             else:
+
                 # Backlog Based with Overrides
                 if month_of_year == 0:
-                    target_end_price = params.manual_prices[year_idx] if year_idx < len(params.manual_prices) else current_price
+                    target_end_price = params.manual_prices[year_idx] if (year_idx < len(params.manual_prices) and params.manual_prices[year_idx] > 0) else current_price
                     
                     year_start_price = current_price
                     temp_price = year_start_price
@@ -66,18 +78,78 @@ class MiningSimulationService:
 
                 change_pct = Decimal(str(backlog[month_idx % len(backlog)]['change_pct']))  # type: ignore
                 current_price = current_price * (Decimal('1') + change_pct / Decimal('100')) * self._current_year_drift  # type: ignore
+
             
             # Update difficulty based on manual variations (monthly compound)
             if year_idx < len(params.manual_difficulty_variations):
                 diff_change_pct = params.manual_difficulty_variations[year_idx]
                 current_difficulty = current_difficulty * (Decimal('1') + diff_change_pct / Decimal('100'))
 
+            # Determine monthly reward considering halving split
+            blocks_in_month = int(144 * 30.41)
+            next_simulation_block = simulation_block + blocks_in_month
+            
+            # Use weighted reward if halving occurs mid-month
+            # Find halving blocks: 840k, 1050k, 1260k
+            halving_blocks = [840000, 1050000, 1260000]
+            current_reward = self._get_reward_for_block(simulation_block)
+            
+            # Check if any halving block falls within this month
+            effective_reward = current_reward
+            
+            for hb in halving_blocks:
+                if simulation_block < hb <= next_simulation_block:
+                    year_had_halving = True
+                    # Weighted average:
+                    # blocks_pre_halving = hb - simulation_block
+                    # blocks_post_halving = next_simulation_block - hb
+                    pre_ratio = Decimal(hb - simulation_block) / Decimal(blocks_in_month)
+                    post_ratio = Decimal(1) - pre_ratio
+                    new_reward = self._get_reward_for_block(hb)
+                    effective_reward = (current_reward * pre_ratio) + (new_reward * post_ratio)
+                    break
+
+            simulation_block = next_simulation_block
+
             # Recalculate monthly BTC production with current difficulty
-            monthly_btc = (effective_hashrate * Decimal('1e12') / current_difficulty) * Decimal('144') * network.block_reward * Decimal('30.41')
+            # Formula: (Hashrate_H_s * Seconds_in_Month) / (Difficulty * 2^32) * Reward
+            seconds_in_month = Decimal('3600') * Decimal('24') * Decimal('30.41')
+            difficulty_factor = current_difficulty * Decimal(str(2**32))
+            
+            monthly_btc = (effective_hashrate * Decimal('1e12') * seconds_in_month / difficulty_factor) * effective_reward
             
             monthly_revenue = monthly_btc * current_price
+
+
             monthly_profit = monthly_revenue - monthly_opex
+            
+            year_btc += monthly_btc
+            year_revenue += monthly_revenue
+            year_difficulty_sum += current_difficulty
             total_profits_usd += monthly_profit
+
+            # End of year processing
+            if month_of_year == 11:
+                total_power_mw = farm.total_consumption_mw
+                annual_mwh = total_power_mw * Decimal('24') * Decimal('365')
+                
+                btc_per_mwh = (year_btc / annual_mwh) if annual_mwh > 0 else Decimal('0')
+                usd_per_mwh = (year_revenue / annual_mwh) if annual_mwh > 0 else Decimal('0')
+                
+                annual_results.append({
+                    'year': year_idx + 1,
+                    'btc_generated': year_btc,
+                    'usd_revenue': year_revenue,
+                    'avg_difficulty': year_difficulty_sum / Decimal('12'),
+                    'has_halving': year_had_halving,
+                    'btc_per_mwh': btc_per_mwh,
+                    'usd_per_mwh': usd_per_mwh
+                })
+                # Reset year accumulators
+                year_btc = Decimal('0')
+                year_revenue = Decimal('0')
+                year_difficulty_sum = Decimal('0')
+                year_had_halving = False
 
         total_other_capex = sum(capex_breakdown.values())
         total_investment = farm.total_investment + total_other_capex
@@ -116,6 +188,7 @@ class MiningSimulationService:
             opc_per_h = energy_cost_per_mwh_pure
 
         return {
+            'annual_generation': annual_results,
             'daily_btc': monthly_btc / Decimal('30.41'),
             'daily_usd': (monthly_btc * current_price) / Decimal('30.41'), # Last month's price
             'daily_cost': daily_cost,
@@ -153,3 +226,14 @@ class MiningSimulationService:
             'total_power_consumption': total_power_mw,
             'power_source': power_source
         }
+
+    def _get_reward_for_block(self, block: int) -> Decimal:
+        if block < 840000:
+            return Decimal('6.25')
+        elif block < 1050000:
+            return Decimal('3.125')
+        elif block < 1260000:
+            return Decimal('1.5625')
+        else:
+            return Decimal('0.78125')
+

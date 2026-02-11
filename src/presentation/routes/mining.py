@@ -1,12 +1,16 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify  # type: ignore
 from decimal import Decimal
-from ..schemas.mining import SimulationRequest
-from ...domain.entities import MiningFarm
-from ...domain.value_objects import ASIC, BitcoinNetworkState, SimulationParams, PriceProjectionMode
-from ...application.services import MiningSimulationService
-from ...infrastructure.repositories import JsonASICRepository
-from ...infrastructure.external_apis import ExternalBitcoinApiRepository
+from ..schemas.mining import SimulationRequest  # type: ignore
+from ...domain.entities import MiningFarm  # type: ignore
+from ...domain.value_objects import ASIC, BitcoinNetworkState, SimulationParams, PriceProjectionMode  # type: ignore
+from ...application.services import MiningSimulationService  # type: ignore
+from ...infrastructure.repositories import JsonASICRepository  # type: ignore
+from ...infrastructure.external_apis import ExternalBitcoinApiRepository  # type: ignore
 import os
+
+# Constants
+HOURS_PER_YEAR = Decimal('8760')
+MWH_TO_KWH = Decimal('1000')
 
 mining_bp = Blueprint('mining', __name__)
 
@@ -15,7 +19,21 @@ asic_repo = JsonASICRepository(os.path.join('src', 'infrastructure', 'asics.json
 network_repo = ExternalBitcoinApiRepository()
 simulation_service = MiningSimulationService()
 
+def _clean_currency(value: str) -> str:
+    """Removes currency symbols, thousands separators (dots) and replaces decimal comma with dot."""
+    if not value or not isinstance(value, str):
+        return '0'
+    clean = value.replace('$', '').replace('€', '').strip()
+    # Check if format is 1.234,56 (Spanish/European style)
+    if '.' in clean and ',' in clean:
+        clean = clean.replace('.', '').replace(',', '.')
+    elif ',' in clean:
+        # Check if it's 1234,56
+        clean = clean.replace(',', '.')
+    return clean
+
 @mining_bp.route('/')
+
 def home():
     network_state = network_repo.get_current_state()
     asics = asic_repo.get_all()
@@ -96,11 +114,77 @@ def _extract_asics(form_data: dict) -> list:
             asics.append({
                 'model': model,
                 'units': int(form_data.get(f'asic_units_{i}', '0')),
-                'price': Decimal(form_data.get(f'asic_price_{i}', '0')),
-                'hashrate': Decimal(form_data.get(f'asic_hashrate_{i}', '0')),
-                'consumption': Decimal(form_data.get(f'asic_consumption_{i}', '0'))
+                'price': Decimal(form_data.get(f'asic_price_{i}', '0') or '0'),
+                'hashrate': Decimal(form_data.get(f'asic_hashrate_{i}', '0') or '0'),
+                'consumption': Decimal(form_data.get(f'asic_consumption_{i}', '0') or '0')
             })
     return asics
+
+def _extract_capex_breakdown(form_data: dict) -> dict:
+    # Helper to extract CAPEX items for reporting
+    capex = {}
+    
+    # Static fields
+    static_fields = {
+        'research': 'Research',
+        'shelter': 'Shelter',
+        'generator': 'Generator',
+        'infrastructure': 'Infrastructure',
+        'general_expenses': 'General Expenses'
+    }
+    
+    for field, label in static_fields.items():
+        val = form_data.get(field, '0')
+        if val and Decimal(val) > 0:
+            capex[label] = Decimal(val)
+
+    # Dynamic items
+    for key, value in form_data.items():
+        if key.startswith('other_capex_') and not key.startswith('other_capex_name_'):
+            idx = key.split('_')[-1]
+            name = form_data.get(f'other_capex_name_{idx}', f'Other CAPEX {idx}')
+            if value and Decimal(value) > 0:
+                capex[name] = Decimal(value)
+    return capex
+
+def _extract_opex_breakdown(form_data: dict) -> dict:
+    # Fixed monthly costs (captured under services/operational)
+    fixed_services = [
+        'insurance', 'software', 'internet', 'security', 
+        'accounting', 'lawyer'
+    ]
+    
+    staff_monthly = Decimal('0')  # type: ignore
+    services_monthly = Decimal('0')  # type: ignore
+    other_monthly = Decimal('0')  # type: ignore
+    
+    for field in fixed_services:
+        services_monthly = services_monthly + Decimal(form_data.get(field, '0') or '0')  # type: ignore
+    
+    # Additional operational costs fall under "Others" in the UI
+    other_monthly = other_monthly + Decimal(form_data.get('operational_costs', '0') or '0')  # type: ignore
+    
+    # Dynamic monthly costs (staff, service, other)
+    for key, value in form_data.items():
+        if '_name_' in key:
+            continue
+        
+        if key.startswith('staff_'):
+            staff_monthly = staff_monthly + Decimal(value or '0')  # type: ignore
+        elif key.startswith('service_'):
+            services_monthly = services_monthly + Decimal(value or '0')  # type: ignore
+        elif key.startswith('other_') and not key.startswith('other_capex_'):
+            other_monthly = other_monthly + Decimal(value or '0')  # type: ignore
+                
+    total_monthly = staff_monthly + services_monthly + other_monthly  # type: ignore
+    
+    return {
+        'total_monthly': total_monthly,
+        'total_annual': total_monthly * Decimal('12'),
+        'staff_monthly': staff_monthly,
+        'services_monthly': services_monthly,
+        'other_monthly': other_monthly
+    }
 
 @mining_bp.route('/calculate', methods=['POST'])
 def calculate():
@@ -131,20 +215,54 @@ def calculate():
                 estimated_next_difficulty_change=network_state.estimated_next_difficulty_change
             )
             
+        # Determine MWh cost based on source
+        power_source = data.get('power_source', 'Direct Energy')
+        if power_source == 'Gas powered':
+            mwh_cost = Decimal(data.get('gas_price_per_mwh', '0') or '0')
+            # O&M and Overhauling could be considered additional OPEX
+            # om_annual = (om_per_mwh * farm_kw * 8760) / 1000
+            om_annual = Decimal(data.get('om_per_mwh', '0') or '0') * farm.total_consumption_kw * (HOURS_PER_YEAR / MWH_TO_KWH)
+            # Note: Overhauling is usually a one-time or infrequent large cost, 
+            # for now we'll add it once if provided, but normally it should be amortized.
+            overhauling = Decimal(data.get('overhauling', '0') or '0')
+        else:
+            mwh_cost = Decimal(data.get('energy_cost_per_mwh', '0') or '0')
+            om_annual = Decimal('0')
+            overhauling = Decimal('0')
+
+        opex_breakdown = _extract_opex_breakdown(data)
+        
         params = SimulationParams(
-            energy_cost_kwh=Decimal(data.get('energy_cost_per_mwh', '0')) / Decimal('1000'),
-            downtime_percent=Decimal(data.get('downtime_percent', '0')),
-            operational_costs_annual=Decimal(data.get('operational_costs', '0')) * Decimal('12'),
+            energy_cost_kwh=mwh_cost / Decimal('1000'),
+            energy_om_annual=om_annual + overhauling,
+            downtime_percent=Decimal(_clean_currency(data.get('downtime_percent', '0'))),
+            operational_costs_annual=opex_breakdown['total_annual'],
             depreciation_years=int(data.get('depreciation_years', '3')),
             price_mode=PriceProjectionMode(data.get('price_method', 'manual')),
-            manual_prices=[Decimal(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0')) for i in range(1, 9)],
-            manual_difficulty_variations=[Decimal(data.get(f'manual_diff_var_{i}', '0')) for i in range(1, 9)]
+            manual_prices=[Decimal(_clean_currency(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0'))) for i in range(1, 9)],
+            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}', '0'))) for i in range(1, 9)]
         )
+
         
         capex_breakdown = _extract_capex_breakdown(data)
         
         # Execute Use Case
-        results = simulation_service.calculate_results(farm, network_state, params, capex_breakdown)
+        results = simulation_service.calculate_results(farm, network_state, params, capex_breakdown, power_source=power_source)
+        
+        # Add OPEX breakdown to results for the template
+        # Include Electricity O&M/Overhauling for full visibility
+        results['opex_summary'] = {
+            'monthly_total': opex_breakdown['total_monthly'] + ((om_annual + overhauling) / Decimal('12')),
+            'annual_total': opex_breakdown['total_annual'] + om_annual + overhauling,
+            'staff_monthly': opex_breakdown['staff_monthly'],
+            'staff_annual': opex_breakdown['staff_monthly'] * Decimal('12'),
+            'services_monthly': opex_breakdown['services_monthly'],
+            'services_annual': opex_breakdown['services_monthly'] * Decimal('12'),
+            'other_monthly': opex_breakdown['other_monthly'],
+            'other_annual': opex_breakdown['other_monthly'] * Decimal('12'),
+            'energy_om_monthly': (om_annual + overhauling) / Decimal('12'),
+            'energy_om_annual': om_annual + overhauling
+        }
         
         return render_template('results_partial.html', results=results, btc_price=network_state.price_btc_usd)
         
@@ -153,9 +271,9 @@ def calculate():
 
 @mining_bp.route('/export_excel')
 def export_excel():
-    import pandas as pd
+    import pandas as pd  # type: ignore
     from io import BytesIO
-    from flask import send_file
+    from flask import send_file  # type: ignore
     # Placeholder for Excel export
     df = pd.DataFrame({'Metric': ['Note'], 'Value': ['Refactored structure active. Simulation state needs persistent storage for export.']})
     output = BytesIO()

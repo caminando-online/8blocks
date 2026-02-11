@@ -13,6 +13,7 @@ class ASIC:
     price: Decimal
     hashrate: Decimal  # TH/s
     consumption: Decimal  # W
+    cooling: str = "Air"
     
     @property
     def usd_per_th(self) -> Decimal:
@@ -42,8 +43,11 @@ class BitcoinNetworkState:
             return Decimal('6.25')
         elif self.current_block < 1050000:
             return Decimal('3.125')
-        else:
+        elif self.current_block < 1260000:
             return Decimal('1.5625')
+        else:
+            return Decimal('0.78125')
+
 
     @property
     def blocks_to_halving(self) -> int:
@@ -61,6 +65,7 @@ class BitcoinNetworkState:
 class SimulationParams:
     years: int = 8
     energy_cost_kwh: Decimal = Decimal('0')
+    energy_om_annual: Decimal = Decimal('0')
     downtime_percent: Decimal = Decimal('0')
     operational_costs_annual: Decimal = Decimal('0')
     depreciation_years: int = 3

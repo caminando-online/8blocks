@@ -20,6 +20,10 @@ class MiningFarm:
     def total_consumption_kw(self) -> Decimal:
         power_w = sum(item['asic'].consumption * Decimal(str(item['units'])) for item in self.asics)
         return power_w / Decimal('1000')
+
+    @property
+    def total_consumption_mw(self) -> Decimal:
+        return self.total_consumption_kw / Decimal('1000')
         
     @property
     def total_investment(self) -> Decimal:

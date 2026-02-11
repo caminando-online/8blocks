@@ -110,6 +110,71 @@
         #theme-toggle:hover {
             transform: scale(1.1);
         }
+
+        .modified-value {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            padding: 2px 4px;
+            gap: 2px;
+        }
+
+        .modified-indicator {
+            position: absolute;
+            top: 0;
+            right: -10px;
+            transform: translateY(-50%);
+            background-color: #dc3545; /* Bootstrap Red */
+            color: white;
+            font-size: 8px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 10px;
+            line-height: 1;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            cursor: help;
+        }
+
+        .benchmark-input {
+            background: transparent;
+            border: none;
+            color: inherit;
+            text-align: center;
+            padding: 0;
+            font-weight: inherit;
+        }
+
+        .benchmark-input.price {
+            width: 75px;
+        }
+
+        .benchmark-input.hashrate {
+            width: 55px;
+        }
+
+        .benchmark-input:focus {
+            outline: 1px solid var(--accent-color);
+            background: var(--header-bg);
+            border-radius: 3px;
+        }
+
+        /* Remove arrows from number input */
+        .benchmark-input::-webkit-outer-spin-button,
+        .benchmark-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            appearance: none;
+            margin: 0;
+        }
+        .benchmark-input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        #benchmarks-table th {
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body data-bs-theme="light">
@@ -125,299 +190,375 @@
             // Note: button and icon might not be in DOM yet if this runs at top
         })();
     </script>
-    <div class="container mt-5">
+    <div class="mt-5">
         <h1>Bitcoin Mining Farm Business Model Calculator</h1>
-        <form method="POST">
-            <!-- CAPEX -->
-            <div class="row">
-                <div class="col-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5>CAPEX (Capital Expenditures)</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="research" class="form-label">Research (USD)</label>
-                                <input type="number" class="form-control" id="research" name="research" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="asics_unit_value" class="form-label">ASICs ($)</label>
-                                <input type="number" class="form-control" id="asics_unit_value" name="asics_unit_value" value="0" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label for="shelter" class="form-label">Shelter (USD)</label>
-                                <input type="number" class="form-control" id="shelter" name="shelter" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="generator" class="form-label">Generator (USD)</label>
-                                <input type="number" class="form-control" id="generator" name="generator" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="infrastructure" class="form-label">Infrastructure (USD)</label>
-                                <input type="number" class="form-control" id="infrastructure" name="infrastructure" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="general_expenses" class="form-label">General Expenses (USD)</label>
-                                <input type="number" class="form-control" id="general_expenses" name="general_expenses" value="0">
-                            </div>
-                            <div id="other_capex">
-                                <!-- Dynamic other fields will be added here -->
-                            </div>
-                            <button type="button" class="btn btn-secondary mb-3" onclick="addOtherCapex()">Add Other</button>
-                            <div class="mb-3">
-                                <label for="financing_rate" class="form-label">Financing Rate (%)</label>
-                                <input type="number" step="0.01" class="form-control" id="financing_rate" name="financing_rate" value="0">
-                            </div>
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="expansion_10mw" name="expansion_10mw" value="yes">
-                                <label class="form-check-label" for="expansion_10mw">Plan expansion to 10 MW</label>
-                            </div>
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="expansion_40mw" name="expansion_40mw" value="yes">
-                                <label class="form-check-label" for="expansion_40mw">Plan expansion to 40 MW</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="calculator-tab" data-bs-toggle="tab" data-bs-target="#calculator" type="button" role="tab" aria-controls="calculator" aria-selected="true">Calculadora de Granja</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="benchmarks-tab" data-bs-toggle="tab" data-bs-target="#benchmarks" type="button" role="tab" aria-controls="benchmarks" aria-selected="false" onclick="renderBenchmarks()">Benchmarks ASICs</button>
+            </li>
+        </ul>
 
-                <div class="row">
-                <!-- ASICs (details) -->
-                <div class="col-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5>ASICs (Details)</h5>
-                            <a href="/update_asics" class="btn btn-warning btn-sm">Actualizar Datos</a>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Modelo</th>
-                                        <th>Precio ($)</th>
-                                        <th>Hashrate (TH/s)</th>
-                                        <th>Consumo (W)</th>
-                                        <th>$/TH</th>
-                                        <th>J/TH</th>
-                                        <th>Unidades</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                 <tbody id="asics_tbody">
-                                     <!-- Selected ASICs will be added here dynamically -->
-                                 </tbody>
-                            </table>
-                            <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">Agregar ASIC</button>
-                        </div>
-                    </div>
-                </div>
-
-                </div>
-                <div class="row">
-                <!-- Electricity -->
-                <div class="col-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5>Electricity</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="power_source" class="form-label">Power Source</label>
-                                <select class="form-control" id="power_source" name="power_source" onchange="togglePowerSource()">
-                                    <option value="">--select--</option>
-                                    <option value="Direct Energy">Direct Energy</option>
-                                    <option value="Gas powered">Gas powered</option>
-                                </select>
-                            </div>
-                            <div id="direct_energy_fields" style="visibility: hidden">
-                            </div>
-                            <div id="gas_powered_fields" style="visibility: hidden">
-                        </div>
-                    </div>
-                </div>
-
-                </div>
-                <div class="row">
-                <!-- OPEX -->
-                <div class="col-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5>OPEX (Operating Expenses)</h5>
-                        </div>
-                        <div class="card-body">
-                            <h6><strong>Staff</strong></h6>
-                            <div id="staff_fields">
-                                <!-- Dynamic staff fields will be added here -->
-                            </div>
-                            <button type="button" class="btn btn-secondary mb-3" onclick="addStaff()">Add Staff</button>
-                            <h6><strong>Services</strong></h6>
-                            <div class="mb-3">
-                                <label for="insurance" class="form-label">Insurance (USD/month)</label>
-                                <input type="number" class="form-control" id="insurance" name="insurance" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="software" class="form-label">Software Licenses (USD/month)</label>
-                                <input type="number" class="form-control" id="software" name="software" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="internet" class="form-label">Internet (USD/month)</label>
-                                <input type="number" class="form-control" id="internet" name="internet" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="security" class="form-label">Security (USD/month)</label>
-                                <input type="number" class="form-control" id="security" name="security" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="accounting" class="form-label">Accounting (USD/month)</label>
-                                <input type="number" class="form-control" id="accounting" name="accounting" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="lawyer" class="form-label">Lawyer (USD/month)</label>
-                                <input type="number" class="form-control" id="lawyer" name="lawyer" value="0">
-                            </div>
-                            <div id="service_fields">
-                                <!-- Dynamic service fields will be added here -->
-                            </div>
-                            <button type="button" class="btn btn-secondary mb-3" onclick="addService()">Add Service</button>
-                            <h6><strong>Others</strong></h6>
-                            <div class="mb-3">
-                                <label for="downtime_percent" class="form-label">Downtime (%)</label>
-                                <input type="number" step="0.01" class="form-control" id="downtime_percent" name="downtime_percent" value="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="operational_costs" class="form-label">Additional Operational Costs (USD/month)</label>
-                                <input type="number" class="form-control" id="operational_costs" name="operational_costs" value="0">
-                            </div>
-                            <div id="other_fields">
-                                <!-- Dynamic other OPEX fields will be added here -->
-                            </div>
-                            <button type="button" class="btn btn-secondary mb-3" onclick="addOtherOpex()">Add Other OPEX</button>
-                        </div>
-                    </div>
-                </div>
-
-                </div>
-                <div class="row">
-                <!-- Bitcoin Variables -->
-                <div class="col-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5>Bitcoin Variables</h5>
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="refreshNetworkData()">Actualizar Datos</button>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled">
-                                <li><strong>BTC Price:</strong> $<span id="val_btc_price" data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
-                                <li><strong>Current Difficulty:</strong> <span id="val_difficulty">{{ difficulty }}</span></li>
-                                <li><strong>Current Block:</strong> <span id="val_block">{{ current_block }}</span></li>
-                                <li><strong>Blocks to Next Halving:</strong> <span id="val_blocks_to_halving">{{ blocks_to_halving }}</span></li>
-                                <li><strong>Months to Next Halving:</strong> <span id="val_months_to_halving">{{ "%.1f"|format(months_to_halving) }}</span></li>
-                                <li><strong>Blocks to Next Difficulty Adjustment:</strong> <span id="val_blocks_to_diff">{{ blocks_to_next_difficulty }}</span></li>
-                                <li><strong>Difficulty Adjustments Every:</strong> 2016 Blocks</li>
-                                <li><strong>Estimated Next Difficulty Change:</strong> <span id="val_est_diff_change">{{ "%.2f"|format(estimated_next_diff_change) }}</span>%</li>
-                                <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
-                                <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
-                                <li><strong>Avg Monthly Difficulty Change (24m):</strong> {{ "%.2f"|format(avg_change_24m) }}%</li>
-                                <li><strong>Avg Monthly Difficulty Change (36m):</strong> {{ "%.2f"|format(avg_change_36m) }}%</li>
-                                <li><strong>Avg Monthly Difficulty Change (48m):</strong> {{ "%.2f"|format(avg_change_48m) }}%</li>
-                                <li><strong>Block Reward:</strong> 3.125 BTC</li>
-                            </ul>
-                            <div class="mb-3">
-                                <label for="btc_price_override" class="form-label">BTC Price Override (USD) - Leave blank for real-time</label>
-                                <input type="number" step="0.01" class="form-control" id="btc_price_override" name="btc_price_override">
-                            </div>
-                            <div class="mb-3">
-                                <label for="difficulty_override" class="form-label">Difficulty Override - Leave blank for real-time</label>
-                                <input type="number" step="1" class="form-control" id="difficulty_override" name="difficulty_override">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                </div>
-                <div class="row">
-                    <!-- Bitcoin Price Variables -->
-                    <div class="col-12 mb-4">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                <h5>Bitcoin Price Variables</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="price_method" class="form-label">Pricing Method</label>
-                                    <select class="form-control" id="price_method" name="price_method" onchange="togglePriceMethod()">
-                                        <option value="manual">Manual Input</option>
-                                        <option value="backlog">Backlog Based</option>
-                                    </select>
+        <div class="tab-content" id="mainTabsContent">
+            <!-- Calculator Tab -->
+            <!-- Calculator Tab -->
+            <div class="tab-pane fade show active" id="calculator" role="tabpanel" aria-labelledby="calculator-tab">
+                <div class="container">
+                <form method="POST">
+                    <!-- CAPEX -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>CAPEX (Capital Expenditures)</h5>
                                 </div>
-                                <div id="manual_price_fields">
-                                    <p class="text-muted small">Enter the estimated average price for each year.</p>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="research" class="form-label">Research (USD)</label>
+                                        <input type="number" class="form-control" id="research" name="research" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="asics_unit_value" class="form-label">ASICs ($)</label>
+                                        <input type="number" class="form-control" id="asics_unit_value" name="asics_unit_value" value="0" readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="shelter" class="form-label">Shelter (USD)</label>
+                                        <input type="number" class="form-control" id="shelter" name="shelter" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="generator" class="form-label">Generator (USD)</label>
+                                        <input type="number" class="form-control" id="generator" name="generator" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="infrastructure" class="form-label">Infrastructure (USD)</label>
+                                        <input type="number" class="form-control" id="infrastructure" name="infrastructure" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="general_expenses" class="form-label">General Expenses (USD)</label>
+                                        <input type="number" class="form-control" id="general_expenses" name="general_expenses" value="0">
+                                    </div>
+                                    <div id="other_capex">
+                                        <!-- Dynamic other fields will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-secondary mb-3" onclick="addOtherCapex()">Add Other</button>
+                                    <div class="mb-3">
+                                        <label for="financing_rate" class="form-label">Financing Rate (%)</label>
+                                        <input type="number" step="0.01" class="form-control" id="financing_rate" name="financing_rate" value="0">
+                                    </div>
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="expansion_10mw" name="expansion_10mw" value="yes">
+                                        <label class="form-check-label" for="expansion_10mw">Plan expansion to 10 MW</label>
+                                    </div>
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="expansion_40mw" name="expansion_40mw" value="yes">
+                                        <label class="form-check-label" for="expansion_40mw">Plan expansion to 40 MW</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ASICs (details) -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>ASICs (Details)</h5>
+                                    <a href="/update_asics" class="btn btn-warning btn-sm">Actualizar Datos</a>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Modelo</th>
+                                                <th>Unidades</th>
+                                                <th>Precio ($)</th>
+                                                <th>Hashrate (TH/s)</th>
+                                                <th>Consumo (W)</th>
+                                                <th>$/TH</th>
+                                                <th>J/TH</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asics_tbody">
+                                            <!-- Selected ASICs will be added here dynamically -->
+                                        </tbody>
+                                    </table>
+                                    <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">Agregar ASIC</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Electricity -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>Electricity</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="power_source" class="form-label">Power Source</label>
+                                        <select class="form-control" id="power_source" name="power_source" onchange="togglePowerSource()">
+                                            <option value="">--select--</option>
+                                            <option value="Direct Energy">Direct Energy</option>
+                                            <option value="Gas powered">Gas powered</option>
+                                        </select>
+                                    </div>
+                                    <div id="direct_energy_fields" style="visibility: hidden">
+                                    </div>
+                                    <div id="gas_powered_fields" style="visibility: hidden">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OPEX -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>OPEX (Operating Expenses)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h6><strong>Staff</strong></h6>
+                                    <div id="staff_fields">
+                                        <!-- Dynamic staff fields will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-secondary mb-3" onclick="addStaff()">Add Staff</button>
+                                    <h6><strong>Services</strong></h6>
+                                    <div class="mb-3">
+                                        <label for="insurance" class="form-label">Insurance (USD/month)</label>
+                                        <input type="number" class="form-control" id="insurance" name="insurance" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="software" class="form-label">Software Licenses (USD/month)</label>
+                                        <input type="number" class="form-control" id="software" name="software" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="internet" class="form-label">Internet (USD/month)</label>
+                                        <input type="number" class="form-control" id="internet" name="internet" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="security" class="form-label">Security (USD/month)</label>
+                                        <input type="number" class="form-control" id="security" name="security" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="accounting" class="form-label">Accounting (USD/month)</label>
+                                        <input type="number" class="form-control" id="accounting" name="accounting" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="lawyer" class="form-label">Lawyer (USD/month)</label>
+                                        <input type="number" class="form-control" id="lawyer" name="lawyer" value="0">
+                                    </div>
+                                    <div id="service_fields">
+                                        <!-- Dynamic service fields will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-secondary mb-3" onclick="addService()">Add Service</button>
+                                    <h6><strong>Others</strong></h6>
+                                    <div class="mb-3">
+                                        <label for="downtime_percent" class="form-label">Downtime (%)</label>
+                                        <input type="number" step="0.01" class="form-control" id="downtime_percent" name="downtime_percent" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="operational_costs" class="form-label">Additional Operational Costs (USD/month)</label>
+                                        <input type="number" class="form-control" id="operational_costs" name="operational_costs" value="0">
+                                    </div>
+                                    <div id="other_fields">
+                                        <!-- Dynamic other OPEX fields will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-secondary mb-3" onclick="addOtherOpex()">Add Other OPEX</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bitcoin Variables -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>Bitcoin Variables</h5>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="refreshNetworkData()">Actualizar Datos</button>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li><strong>BTC Price:</strong> $<span id="val_btc_price" data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
+                                        <li><strong>Current Difficulty:</strong> <span id="val_difficulty">{{ difficulty }}</span></li>
+                                        <li><strong>Current Block:</strong> <span id="val_block">{{ current_block }}</span></li>
+                                        <li><strong>Blocks to Next Halving:</strong> <span id="val_blocks_to_halving">{{ blocks_to_halving }}</span></li>
+                                        <li><strong>Months to Next Halving:</strong> <span id="val_months_to_halving">{{ "%.1f"|format(months_to_halving) }}</span></li>
+                                        <li><strong>Blocks to Next Difficulty Adjustment:</strong> <span id="val_blocks_to_diff">{{ blocks_to_next_difficulty }}</span></li>
+                                        <li><strong>Difficulty Adjustments Every:</strong> 2016 Blocks</li>
+                                        <li><strong>Estimated Next Difficulty Change:</strong> <span id="val_est_diff_change">{{ "%.2f"|format(estimated_next_diff_change) }}</span>%</li>
+                                        <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
+                                        <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
+                                        <li><strong>Avg Monthly Difficulty Change (24m):</strong> {{ "%.2f"|format(avg_change_24m) }}%</li>
+                                        <li><strong>Avg Monthly Difficulty Change (36m):</strong> {{ "%.2f"|format(avg_change_36m) }}%</li>
+                                        <li><strong>Avg Monthly Difficulty Change (48m):</strong> {{ "%.2f"|format(avg_change_48m) }}%</li>
+                                        <li><strong>Block Reward:</strong> 3.125 BTC</li>
+                                    </ul>
+                                    <div class="mb-3">
+                                        <label for="btc_price_override" class="form-label">BTC Price Override (USD) - Leave blank for real-time</label>
+                                        <input type="number" step="0.01" class="form-control" id="btc_price_override" name="btc_price_override">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="difficulty_override" class="form-label">Difficulty Override - Leave blank for real-time</label>
+                                        <input type="number" step="1" class="form-control" id="difficulty_override" name="difficulty_override">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bitcoin Price Variables -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>Bitcoin Price Variables</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="price_method" class="form-label">Pricing Method</label>
+                                        <select class="form-control" id="price_method" name="price_method" onchange="togglePriceMethod()">
+                                            <option value="manual">Manual Input</option>
+                                            <option value="backlog">Backlog Based</option>
+                                        </select>
+                                    </div>
+                                    <div id="manual_price_fields">
+                                        <p class="text-muted small">Enter the estimated average price for each year.</p>
+                                        <div class="row">
+                                            {% for i in range(1, 9) %}
+                                            <div class="col-md-3 mb-2">
+                                                <label for="manual_price_{{ i }}" class="form-label small">Year {{ i }}</label>
+                                                <input type="text" class="form-control form-control-sm price-input" name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0,00" onfocus="handlePriceFocus(this)" onblur="handlePriceBlur(this)" oninput="syncManualPrices('{{ i }}', 'price')">
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div id="backlog_info" style="display: none;">
+                                        <div class="alert alert-info py-2 small mb-2">
+                                            <strong>Backlog Based:</strong> This mode will replicate the monthly price floor movements from 2022-2025 starting from the current price.
+                                        </div>
+                                        <div id="backlog_projection_list" class="mt-3">
+                                            <!-- Computed yearly prices and variations will appear here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bitcoin Difficulty Projections -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>Bitcoin Difficulty Projections</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small">Enter the estimated <strong>average monthly change (%)</strong> for each year. The base is the current difficulty (or override).</p>
                                     <div class="row">
                                         {% for i in range(1, 9) %}
                                         <div class="col-md-3 mb-2">
-                                            <label for="manual_price_{{ i }}" class="form-label small">Year {{ i }}</label>
-                                            <input type="text" class="form-control form-control-sm price-input" name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0,00" onfocus="handlePriceFocus(this)" onblur="handlePriceBlur(this)" oninput="syncManualPrices('{{ i }}', 'price')">
+                                            <label for="manual_diff_var_{{ i }}" class="form-label small">Year {{ i }} (Monthly %)</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm" name="manual_diff_var_{{ i }}" id="manual_diff_var_{{ i }}" value="0.00" oninput="debounce(calculateResults, 500)()">
                                         </div>
                                         {% endfor %}
                                     </div>
                                 </div>
-                                <div id="backlog_info" style="display: none;">
-                                    <div class="alert alert-info py-2 small mb-2">
-                                        <strong>Backlog Based:</strong> This mode will replicate the monthly price floor movements from 2022-2025 starting from the current price.
-                                    </div>
-                                    <div id="backlog_projection_list" class="mt-3">
-                                        <!-- Computed yearly prices and variations will appear here -->
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
-                <div class="row">
-                    <!-- Bitcoin Difficulty Projections -->
-                    <div class="col-12 mb-4">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                <h5>Bitcoin Difficulty Projections</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">Enter the estimated <strong>average monthly change (%)</strong> for each year. The base is the current difficulty (or override).</p>
-                                <div class="row">
-                                    {% for i in range(1, 9) %}
-                                    <div class="col-md-3 mb-2">
-                                        <label for="manual_diff_var_{{ i }}" class="form-label small">Year {{ i }} (Monthly %)</label>
-                                        <input type="number" step="0.01" class="form-control form-control-sm" name="manual_diff_var_{{ i }}" id="manual_diff_var_{{ i }}" value="0.00" oninput="debounce(calculateResults, 500)()">
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                </div>
-                <div class="row">
-                <!-- Depreciation -->
-                <div class="col-12 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5>Depreciation</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="depreciation_years" class="form-label">Depreciation Period (Years)</label>
-                                <input type="number" class="form-control" id="depreciation_years" name="depreciation_years" value="3">
-                            </div>
-                            <div class="mb-3">
-                                <label for="depreciation_method" class="form-label">Depreciation Method</label>
-                                <select class="form-control" id="depreciation_method" name="depreciation_method">
-                                    <option value="linear">Linear</option>
-                                    <option value="declining">Declining Balance</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-        </form>
+                    <!-- Depreciation -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>Depreciation</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="depreciation_years" class="form-label">Depreciation Period (Years)</label>
+                                        <input type="number" class="form-control" id="depreciation_years" name="depreciation_years" value="3">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="depreciation_method" class="form-label">Depreciation Method</label>
+                                        <select class="form-control" id="depreciation_method" name="depreciation_method">
+                                            <option value="linear">Linear</option>
+                                            <option value="declining">Declining Balance</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="results-container">
+                    <!-- Results will be loaded here -->
+                </div>
+                </div> <!-- End Container -->
+            </div> <!-- End Calculator Tab Pane -->
+
+            <!-- Benchmarks Tab -->
+            <div class="tab-pane fade" id="benchmarks" role="tabpanel" aria-labelledby="benchmarks-tab">
+                <div class="container-fluid px-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Comparativa Benchmarks ASICs</h5>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="filter-selected-only" onchange="renderBenchmarks()">
+                                <label class="form-check-label small fw-bold" for="filter-selected-only">Solo Seleccionados</label>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetAsicOverrides()">
+                                <i class="bi bi-arrow-counterclockwise"></i> Return to default
+                            </button>
+                            <div id="scoring-explainer-trigger">
+                                <span class="badge bg-info text-dark" data-bs-toggle="popover" id="scoring-popover" title="Algoritmo de Scoring de Inversión" style="cursor: pointer;">
+                                    ¿Cómo se calcula el Score? <i class="bi bi-info-circle"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="benchmarks-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center" style="width: 40px;">
+                                            <input class="form-check-input" type="checkbox" id="benchmark-select-all" onclick="toggleAllBenchmarks(this.checked)">
+                                        </th>
+                                        <th style="cursor: pointer" onclick="sortBenchmarks('model')">Modelo ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('cooling')">Enfriamiento ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('price')">Precio ($) ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('hashrate')">Hashrate (TH/s) ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('efficiency')">J/TH ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('usdPerTh')">$/TH ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('revenueMwh')">USD/MWh ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('profitDaily')">Ganancia Día ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('payback')">Payback (Meses) ↕</th>
+                                        <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('score')">Score ↕</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="benchmarks-tbody">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div> <!-- End Container Fluid -->
+            </div>
+        </div>
     </div>
 
     <!-- Data for JavaScript from Backend -->
@@ -973,15 +1114,47 @@
             }
         });
 
-        // Inject ASIC Data from Backend
         const ASIC_DATA = JSON.parse(document.getElementById('asic-data').textContent);
+        const ASIC_OVERRIDES = {}; // Track user modifications per model
+
+        // Centralized debounced functions to avoid closure-loop bugs
+        const debouncedCalculateResults = debounce(() => {
+            calculateResults(() => {
+                // If Benchmarks tab is active, re-render after calculation to ensure fresh energy costs
+                if (document.getElementById('benchmarks-tab').classList.contains('active')) {
+                    renderBenchmarks();
+                }
+            });
+        }, 500);
+
+        const debouncedRenderBenchmarks = debounce(renderBenchmarks, 300);
+
+        function onlyNumbers(event, allowDecimal = false) {
+            const key = event.key;
+            // Allow control keys
+            if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape'].includes(key)) {
+                return true;
+            }
+            // Allow digits
+            if (/[0-9]/.test(key)) {
+                return true;
+            }
+            // Allow decimal point if requested and not already present
+            if (allowDecimal && key === '.' && !event.target.value.includes('.')) {
+                return true;
+            }
+            // Ignore everything else
+            event.preventDefault();
+            return false;
+        }
 
         let asicRowCount = 0;
-        function addAsicRow() {
+        function addAsicRow(preselectModel = null) {
             asicRowCount++;
+            const currentId = asicRowCount; // Capture the ID for the closure
             const tbody = document.getElementById('asics_tbody');
             const row = document.createElement('tr');
-            row.id = `asic_row_${asicRowCount}`;
+            row.id = `asic_row_${currentId}`;
             
             // Build the select options grouped by manufacturer
             const bitmain = ASIC_DATA.filter(a => a.model.toLowerCase().includes('antminer') || a.model.includes('HOST Antminer'));
@@ -1001,49 +1174,109 @@
 
             row.innerHTML = `
                 <td>
-                    <select class="form-control" name="asic_model_${asicRowCount}">
-                        ${optionsHtml}
+                    <select class="form-control" name="asic_model_${currentId}">
+                        ${preselectModel ? optionsHtml.replace(`value="${preselectModel}"`, `value="${preselectModel}" selected`) : optionsHtml}
                     </select>
                 </td>
-                <td><input type="number" class="form-control" name="asic_price_${asicRowCount}" value="0" readonly></td>
-                <td><input type="number" class="form-control" name="asic_hashrate_${asicRowCount}" value="0" readonly></td>
-                <td><input type="number" class="form-control" name="asic_consumption_${asicRowCount}" value="0" readonly></td>
-                <td><input type="number" step="0.01" class="form-control" name="asic_usd_per_th_${asicRowCount}" value="0" readonly></td>
-                <td><input type="number" step="0.01" class="form-control" name="asic_j_per_th_${asicRowCount}" value="0" readonly></td>
-                <td><input type="number" class="form-control" name="asic_units_${asicRowCount}" value="0" min="0" onchange="updateAsicsTotal()"></td>
-                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeAsicRow(${asicRowCount})">Remove</button></td>
+                <td><input type="number" class="form-control" name="asic_units_${currentId}" value="0" min="0" onkeydown="return onlyNumbers(event, false)" onchange="updateAsicsTotal()"></td>
+                <td><input type="number" class="form-control" name="asic_price_${currentId}" value="0" onkeydown="return onlyNumbers(event, true)" onchange="updateAsicRowMetrics(${currentId})"></td>
+                <td><input type="number" class="form-control" name="asic_hashrate_${currentId}" value="0" onkeydown="return onlyNumbers(event, true)" onchange="updateAsicRowMetrics(${currentId})"></td>
+                <td><input type="number" class="form-control" name="asic_consumption_${currentId}" value="0" onkeydown="return onlyNumbers(event, false)" onchange="updateAsicRowMetrics(${currentId})"></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_usd_per_th_${currentId}" value="0" readonly></td>
+                <td><input type="number" step="0.01" class="form-control" name="asic_j_per_th_${currentId}" value="0" readonly></td>
+                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeAsicRow(${currentId})">Remove</button></td>
             `;
             tbody.appendChild(row);
 
+            if (preselectModel) {
+                updateAsicSpecs(row, preselectModel, currentId);
+                updateAsicsTotal();
+            }
+
             // Add event listener to update specs when model changes
             row.querySelector('select').addEventListener('change', function() {
-                updateAsicSpecs(row, this.value);
+                updateAsicSpecs(row, this.value, currentId); // Use captured currentId
                 updateAsicsTotal();
-                debounce(calculateResults, 500)();
+                debouncedCalculateResults();
             });
         }
 
-        function updateAsicSpecs(row, modelName) {
+        function updateAsicRowMetrics(id) {
+            const row = document.getElementById(`asic_row_${id}`);
+            if (!row) return;
+            
+            const model = row.querySelector(`select[name="asic_model_${id}"]`).value;
+            const price = parseFloat(row.querySelector(`input[name="asic_price_${id}"]`).value) || 0;
+            const hashrate = parseFloat(row.querySelector(`input[name="asic_hashrate_${id}"]`).value) || 0;
+            const consumption = parseFloat(row.querySelector(`input[name="asic_consumption_${id}"]`).value) || 0;
+            
+            row.querySelector(`input[name="asic_usd_per_th_${id}"]`).value = hashrate > 0 ? (price / hashrate).toFixed(2) : 0;
+            row.querySelector(`input[name="asic_j_per_th_${id}"]`).value = hashrate > 0 ? (consumption / hashrate).toFixed(2) : 0;
+            
+            // Re-calculate ALL overrides for this model to handle multi-row correctly
+            if (model) {
+                const original = ASIC_DATA.find(a => a.model === model);
+                if (original) {
+                    // Check all rows for this model
+                    const allRows = document.querySelectorAll('#asics_tbody tr[id^="asic_row_"]');
+                    let modelOverride = { price: null, hashrate: null, consumption: null };
+                    
+                    allRows.forEach(r => {
+                        const s = r.querySelector('select');
+                        if (s && s.value === model) {
+                            const rPrice = parseFloat(r.querySelector('input[name*="price"]').value) || 0;
+                            const rHashrate = parseFloat(r.querySelector('input[name*="hashrate"]').value) || 0;
+                            const rConsumption = parseFloat(r.querySelector('input[name*="consumption"]').value) || 0;
+                            
+                            // If ANY row for this model has a modification, capture it
+                            if (Math.abs(rPrice - original.price) > 0.01) modelOverride.price = rPrice;
+                            if (Math.abs(rHashrate - original.hashrate) > 0.01) modelOverride.hashrate = rHashrate;
+                            if (Math.abs(rConsumption - original.consumption) > 0.01) modelOverride.consumption = rConsumption;
+                        }
+                    });
+
+                    // Only store if at least one field is modified
+                    if (modelOverride.price !== null || modelOverride.hashrate !== null || modelOverride.consumption !== null) {
+                        ASIC_OVERRIDES[model] = modelOverride;
+                    } else {
+                        delete ASIC_OVERRIDES[model];
+                    }
+                }
+            }
+            
+            updateAsicsTotal();
+            if (document.getElementById('benchmarks-tab').classList.contains('active')) {
+                debouncedRenderBenchmarks();
+            }
+        }
+
+        function updateAsicSpecs(row, modelName, id) {
             const asic = ASIC_DATA.find(a => a.model === modelName);
             if (asic) {
-                row.querySelector('input[name*="price"]').value = asic.price;
-                row.querySelector('input[name*="hashrate"]').value = asic.hashrate;
-                row.querySelector('input[name*="consumption"]').value = asic.consumption;
-                row.querySelector('input[name*="usd_per_th"]').value = (asic.price / asic.hashrate).toFixed(2);
-                row.querySelector('input[name*="j_per_th"]').value = (asic.consumption / asic.hashrate).toFixed(2);
+                row.querySelector(`input[name="asic_price_${id}"]`).value = asic.price;
+                row.querySelector(`input[name="asic_hashrate_${id}"]`).value = asic.hashrate;
+                row.querySelector(`input[name="asic_consumption_${id}"]`).value = asic.consumption;
             } else {
-                row.querySelector('input[name*="price"]').value = 0;
-                row.querySelector('input[name*="hashrate"]').value = 0;
-                row.querySelector('input[name*="consumption"]').value = 0;
-                row.querySelector('input[name*="usd_per_th"]').value = 0;
-                row.querySelector('input[name*="j_per_th"]').value = 0;
+                row.querySelector(`input[name="asic_price_${id}"]`).value = 0;
+                row.querySelector(`input[name="asic_hashrate_${id}"]`).value = 0;
+                row.querySelector(`input[name="asic_consumption_${id}"]`).value = 0;
             }
+            
+            // Note: We don't delete from ASIC_OVERRIDES here because other rows might still have overrides
+            // updateAsicRowMetrics will clean it up if all rows match original
+            updateAsicRowMetrics(id);
         }
 
         function removeAsicRow(id) {
             const row = document.getElementById(`asic_row_${id}`);
-            if (row) row.remove();
+            if (!row) return;
+            const model = row.querySelector('select')?.value;
+            if (model) delete ASIC_OVERRIDES[model];
+            row.remove();
             updateAsicsTotal();
+            if (document.getElementById('benchmarks-tab').classList.contains('active')) {
+                debouncedRenderBenchmarks();
+            }
         }
 
         function updateAsicsTotal() {
@@ -1056,7 +1289,115 @@
                 total += units * price;
             });
             document.getElementById('asics_unit_value').value = total.toFixed(2);
-            debounce(calculateResults, 500)();
+            debouncedCalculateResults();
+        }
+
+        function updateBenchmarkOverride(model, field, value) {
+            const original = ASIC_DATA.find(a => a.model === model);
+            if (!original) return;
+
+            const numValue = parseFloat(value) || 0;
+            
+            if (!ASIC_OVERRIDES[model]) {
+                ASIC_OVERRIDES[model] = { price: null, hashrate: null, consumption: null };
+            }
+
+            // Update override object
+            if (Math.abs(numValue - original[field]) > 0.01) {
+                ASIC_OVERRIDES[model][field] = numValue;
+            } else {
+                ASIC_OVERRIDES[model][field] = null;
+            }
+
+            // Sync to calculator rows
+            syncBenchmarkToDetails(model, field, numValue);
+            
+            // Re-render benchmarks via centralized debounce
+            debouncedRenderBenchmarks();
+        }
+
+        function syncBenchmarkToDetails(model, field, value) {
+            const allRows = document.querySelectorAll('#asics_tbody tr[id^="asic_row_"]');
+            allRows.forEach(r => {
+                const rModel = r.querySelector('select').value;
+                if (rModel === model) {
+                    const input = r.querySelector(`input[name*="${field}"]`);
+                    if (input && Math.abs(parseFloat(input.value) - value) > 0.01) {
+                        input.value = value;
+                        // Trigger row metrics update without full re-render loop
+                        const id = r.id.split('_').pop();
+                        const price = parseFloat(r.querySelector(`input[name="asic_price_${id}"]`).value) || 0;
+                        const hashrate = parseFloat(r.querySelector(`input[name="asic_hashrate_${id}"]`).value) || 0;
+                        const consumption = parseFloat(r.querySelector(`input[name="asic_consumption_${id}"]`).value) || 0;
+                        r.querySelector(`input[name="asic_usd_per_th_${id}"]`).value = hashrate > 0 ? (price / hashrate).toFixed(2) : 0;
+                        r.querySelector(`input[name="asic_j_per_th_${id}"]`).value = hashrate > 0 ? (consumption / hashrate).toFixed(2) : 0;
+                    }
+                }
+            });
+            updateAsicsTotal();
+        }
+
+        function toggleAsicFromBenchmark(model, checked) {
+            if (checked) {
+                // Add a new row for this model
+                addAsicRow(model);
+            } else {
+                // Remove all rows matching this model
+                const allRows = document.querySelectorAll('#asics_tbody tr[id^="asic_row_"]');
+                let removed = false;
+                allRows.forEach(r => {
+                    const select = r.querySelector('select');
+                    if (select && select.value === model) {
+                        r.remove();
+                        removed = true;
+                    }
+                });
+                
+                if (removed) {
+                    updateAsicsTotal();
+                    // If "Solo Seleccionados" is active, we might need to filter it out from view immediately
+                    if (document.getElementById('filter-selected-only').checked) {
+                        debouncedRenderBenchmarks();
+                    }
+                }
+            }
+        }
+
+        function toggleAllBenchmarks(checked) {
+            const tbody = document.getElementById('benchmarks-tbody');
+            const checkboxes = tbody.querySelectorAll('input[type="checkbox"]');
+            
+            checkboxes.forEach(cb => {
+                if (cb.checked !== checked) {
+                    cb.checked = checked;
+                    // Trigger the onchange manually
+                    cb.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        function resetAsicOverrides() {
+            if (Object.keys(ASIC_OVERRIDES).length === 0) return;
+            
+            if (confirm('¿Estás seguro de que deseas volver a los valores originales del catálogo? Se borrarán todas las modificaciones manuales.')) {
+                // Clear the overrides object
+                for (let model in ASIC_OVERRIDES) {
+                    const original = ASIC_DATA.find(a => a.model === model);
+                    if (original) {
+                        // Restore values in calculator rows
+                        syncBenchmarkToDetails(model, 'price', original.price);
+                        syncBenchmarkToDetails(model, 'hashrate', original.hashrate);
+                        syncBenchmarkToDetails(model, 'consumption', original.consumption);
+                    }
+                }
+                
+                // Reset the global object
+                for (let key in ASIC_OVERRIDES) delete ASIC_OVERRIDES[key];
+                
+                // Refresh UI
+                renderBenchmarks();
+                debouncedCalculateResults();
+            }
         }
 
 
@@ -1072,7 +1413,7 @@
             };
         }
 
-        function calculateResults() {
+        function calculateResults(callback) {
             const form = document.querySelector('form');
             const formData = new FormData(form);
             
@@ -1091,6 +1432,7 @@
             .then(html => {
                 document.getElementById('results-container').innerHTML = html;
                 if (typeof initPopovers === 'function') initPopovers();
+                if (typeof callback === 'function') callback();
             })
             .catch(error => console.error('Error:', error));
         }
@@ -1101,7 +1443,290 @@
                 const val = parseDisplayCurrency(el.value);
                 if (val > 0) el.value = formatDisplayCurrency(val);
             });
+            
+            // Re-render benchmarks if the tab is switched
+            document.getElementById('benchmarks-tab').addEventListener('shown.bs.tab', () => {
+                renderBenchmarks();
+            });
         });
+
+        // Benchmarks Logic
+        let benchmarkSortKey = 'score';
+        let benchmarkSortDesc = true;
+
+        function renderBenchmarks() {
+            const tbody = document.getElementById('benchmarks-tbody');
+            if (!tbody) return;
+
+            // Get current values from the Calculator tab safely
+            const btcPriceEl = document.getElementById('btc_price_override');
+            const valBtcPriceEl = document.getElementById('val_btc_price');
+            const btcPrice = parseFloat(btcPriceEl?.value) || parseFloat(valBtcPriceEl?.dataset.raw) || parseDisplayCurrency(valBtcPriceEl?.innerText) || 90000;
+
+            const diffOverrideEl = document.getElementById('difficulty_override');
+            const valDifficultyEl = document.getElementById('val_difficulty');
+            const difficulty = parseFloat(diffOverrideEl?.value) || parseDisplayCurrency(valDifficultyEl?.innerText) || 84000000000000;
+
+            // Get energy cost from results if available (OPC/h includes OPEX), else fallback to inputs
+            const opcPerHVal = document.getElementById('val_opc_per_h');
+            let energyCostKwh = 0;
+            
+            if (opcPerHVal) {
+                // OPC/h is already in $/MWh
+                energyCostKwh = parseDisplayCurrency(opcPerHVal.innerText) / 1000;
+            } else {
+                const energyMwh = parseFloat(document.getElementById('energy_cost_per_mwh')?.value) || 0;
+                const gasMwh = parseFloat(document.getElementById('gas_price_per_mwh')?.value) || 0;
+                energyCostKwh = (energyMwh || gasMwh || 0) / 1000;
+            }
+
+             // Daily production BTC/TH
+             const blockReward = 3.125;
+             const btcPerThDay = (1e12 * 86400) / (difficulty * Math.pow(2, 32)) * blockReward;
+
+             // Filter by selected models if toggle is on
+             const filterSelected = document.getElementById('filter-selected-only')?.checked;
+             let filteredAsics = ASIC_DATA;
+             
+             if (filterSelected) {
+                 const selectedModels = new Set();
+                 document.querySelectorAll('#asics_tbody tr[id^="asic_row_"] select').forEach(s => {
+                     if (s.value) selectedModels.add(s.value);
+                 });
+                 filteredAsics = ASIC_DATA.filter(a => selectedModels.has(a.model));
+             }
+
+             if (!filteredAsics || filteredAsics.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="10" class="text-center">${filterSelected ? 'No hay modelos seleccionados en la calculadora' : 'No hay datos de ASICs disponibles'}</td></tr>`;
+                 return;
+             }
+
+             let data = filteredAsics.map(originalAsic => {
+                 let asic = {...originalAsic};
+                 let modifiedFields = {price: false, hashrate: false, consumption: false};
+                 
+                 const override = ASIC_OVERRIDES[asic.model];
+                 if (override) {
+                     if (override.price !== null) { asic.price = override.price; modifiedFields.price = true; }
+                     if (override.hashrate !== null) { asic.hashrate = override.hashrate; modifiedFields.hashrate = true; }
+                     if (override.consumption !== null) { asic.consumption = override.consumption; modifiedFields.consumption = true; }
+                 }
+
+                 const dailyBtc = asic.hashrate * btcPerThDay;
+                 const dailyUsd = dailyBtc * btcPrice;
+                 const dailyEnergyKwh = (asic.consumption / 1000) * 24;
+                 const dailyEnergyCost = dailyEnergyKwh * energyCostKwh;
+                 const profitDaily = dailyUsd - dailyEnergyCost;
+                 
+                 // MWh Calculations
+                 const asicsPerMwh = asic.consumption > 0 ? (1000000 / asic.consumption) : 0;
+                 const revenueMwh = asicsPerMwh * dailyUsd / 24; // $/MWh = (ASICs * DailyUSD) / 24h
+                
+                const payback = profitDaily > 0 ? (asic.price / (profitDaily * 30.41)) : 999;
+                const efficiency = asic.consumption / asic.hashrate;
+                const usdPerTh = asic.price / asic.hashrate;
+
+                return {
+                    ...asic,
+                    efficiency,
+                    usdPerTh,
+                    revenueMwh,
+                    profitDaily,
+                    payback,
+                    modifiedFields,
+                    score: 0 // Will calculate after
+                };
+            });
+
+            // Scoring Algorithm
+            // 1. Efficiency (J/TH) - Weight 35% (Lower is better)
+            // 2. Capital Efficiency ($/TH) - Weight 25% (Lower is better)
+            // 3. Payback - Weight 25% (Lower is better)
+            // 4. Revenue/MWh - Weight 15% (Higher is better)
+            
+            const minEff = Math.min(...data.map(d => d.efficiency));
+            const maxEff = Math.max(...data.map(d => d.efficiency));
+            const minUsdTh = Math.min(...data.map(d => d.usdPerTh));
+            const maxUsdTh = Math.max(...data.map(d => d.usdPerTh));
+            const minPayback = Math.min(...data.map(d => d.payback));
+            const maxPayback = Math.max(...data.map(d => d.payback));
+            const maxRevMwh = Math.max(...data.map(d => d.revenueMwh));
+
+            data = data.map(d => {
+                const sEff = 100 * (1 - (d.efficiency - minEff) / (maxEff - minEff || 1));
+                const sUsd = 100 * (1 - (d.usdPerTh - minUsdTh) / (maxUsdTh - minUsdTh || 1));
+                const sPay = d.payback === 999 ? 0 : 100 * (1 - (d.payback - minPayback) / (maxPayback - minPayback || 1));
+                const sMwh = 100 * (d.revenueMwh / (maxRevMwh || 1));
+                
+                d.score = Math.round((sEff * 0.35) + (sUsd * 0.25) + (sPay * 0.25) + (sMwh * 0.15));
+                return d;
+            });
+
+            // Sorting
+            data.sort((a, b) => {
+                let valA = a[benchmarkSortKey];
+                let valB = b[benchmarkSortKey];
+                
+                // Handle possible undefined or null
+                if (valA === undefined || valA === null) valA = 0;
+                if (valB === undefined || valB === null) valB = 0;
+
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                // Secondary sort key for stability (Model Name)
+                if (comparison === 0) {
+                    comparison = a.model.localeCompare(b.model);
+                }
+
+                return benchmarkSortDesc ? (comparison * -1) : comparison;
+            });
+
+            // Calculate threshold for "Best Choice" (Top 15% by Score)
+            const scoresSorted = [...data].sort((a, b) => b.score - a.score);
+            const topThreshold = scoresSorted[Math.floor(scoresSorted.length * 0.15)]?.score || 999;
+
+            // Capture focus state to restore it after re-render
+            const activeEl = document.activeElement;
+            const activeId = activeEl ? activeEl.id : null;
+            const selectionStart = activeEl ? activeEl.selectionStart : null;
+            const selectionEnd = activeEl ? activeEl.selectionEnd : null;
+
+             // Check if model is already in calculator for the checkbox state
+             const currentlyInCalc = new Set();
+             document.querySelectorAll('#asics_tbody tr[id^="asic_row_"] select').forEach(s => {
+                 if (s.value) currentlyInCalc.add(s.value);
+             });
+
+             // Sync master checkbox state with filtered data
+             const masterCheckbox = document.getElementById('benchmark-select-all');
+             if (masterCheckbox) {
+                 const allSelected = data.every(d => currentlyInCalc.has(d.model));
+                 const someSelected = data.some(d => currentlyInCalc.has(d.model));
+                 masterCheckbox.checked = allSelected && data.length > 0;
+                 masterCheckbox.indeterminate = someSelected && !allSelected;
+             }
+
+             tbody.innerHTML = data.map(d => {
+                 const priceIndicator = d.modifiedFields.price ? `<span class="modified-indicator" data-bs-toggle="popover" data-bs-content="El precio ha sido modificado manualmente.">Mod</span>` : '';
+                 const hashrateIndicator = d.modifiedFields.hashrate ? `<span class="modified-indicator" data-bs-toggle="popover" data-bs-content="El hashrate ha sido modificado manualmente.">Mod</span>` : '';
+                 const consumptionIndicator = d.modifiedFields.consumption ? `<span class="modified-value"><span>${d.efficiency.toFixed(2)} (J/TH)</span><span class="modified-indicator" data-bs-toggle="popover" data-bs-content="El consumo ha sido modificado manualmente en la sección de detalles.">Mod</span></span>` : `<span>${d.efficiency.toFixed(2)} (J/TH)</span>`;
+                 
+                 // Stable IDs for focus restoration
+                 const modelSafe = d.model.replace(/[^a-z0-9]/gi, '_');
+                 const priceInputId = `benchmark_price_${modelSafe}`;
+                 const hashrateInputId = `benchmark_hashrate_${modelSafe}`;
+                 
+                 const isChecked = currentlyInCalc.has(d.model) ? 'checked' : '';
+
+                 return `
+                 <tr class="${d.score >= topThreshold ? 'table-success' : ''}">
+                    <td class="text-center">
+                        <input class="form-check-input" type="checkbox" ${isChecked} 
+                               onchange="toggleAsicFromBenchmark('${d.model.replace(/'/g, "\\'")}', this.checked)">
+                    </td>
+                    <td>
+                        <strong>${d.model}</strong>
+                        ${d.score >= topThreshold ? '<span class="badge bg-success ms-1">Best Choice</span>' : ''}
+                    </td>
+                    <td class="text-center"><span class="badge ${d.cooling === 'Air' ? 'bg-info' : (d.cooling === 'Hydro' ? 'bg-primary' : 'bg-secondary')}">${d.cooling}</span></td>
+                    <td class="text-center">
+                        <div class="modified-value">
+                            <span class="currency-prefix">$</span>
+                            <input type="number" class="benchmark-input price" id="${priceInputId}" value="${d.price}" 
+                                   onkeydown="return onlyNumbers(event, true)"
+                                   onchange="updateBenchmarkOverride('${d.model.replace(/'/g, "\\'")}', 'price', this.value)">
+                            ${priceIndicator}
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <div class="modified-value">
+                            <input type="number" class="benchmark-input hashrate" id="${hashrateInputId}" value="${d.hashrate}" 
+                                   onkeydown="return onlyNumbers(event, true)"
+                                   onchange="updateBenchmarkOverride('${d.model.replace(/'/g, "\\'")}', 'hashrate', this.value)">
+                            <span class="unit-suffix">TH/s</span>
+                            ${hashrateIndicator}
+                        </div>
+                    </td>
+                    <td class="text-center">${consumptionIndicator}</td>
+                    <td class="text-center">$${d.usdPerTh.toFixed(2)}</td>
+                    <td class="text-center">$${formatDisplayCurrency(d.revenueMwh)}</td>
+                    <td class="text-center ${d.profitDaily > 0 ? 'text-success' : 'text-danger'}">
+                        $${formatDisplayCurrency(d.profitDaily)}
+                    </td>
+                    <td class="text-center">${d.payback > 100 ? '>100' : d.payback.toFixed(1)}</td>
+                    <td class="text-center">
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1 me-2" style="height: 10px;">
+                                <div class="progress-bar ${d.score > 80 ? 'bg-success' : d.score > 50 ? 'bg-warning' : 'bg-danger'}" 
+                                     role="progressbar" style="width: ${d.score}%"></div>
+                            </div>
+                            <span class="fw-bold">${d.score}</span>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+
+            // Restore focus
+            if (activeId) {
+                const newActiveEl = document.getElementById(activeId);
+                if (newActiveEl) {
+                    newActiveEl.focus();
+                    if (selectionStart !== null && selectionEnd !== null) {
+                        try {
+                            newActiveEl.setSelectionRange(selectionStart, selectionEnd);
+                        } catch (e) {} // For inputs that don't support selection
+                    }
+                }
+            }
+
+            updateScoringPopover();
+            if (typeof initPopovers === 'function') initPopovers();
+        }
+
+        function sortBenchmarks(key) {
+            if (benchmarkSortKey === key) {
+                benchmarkSortDesc = !benchmarkSortDesc;
+            } else {
+                benchmarkSortKey = key;
+                benchmarkSortDesc = true;
+            }
+            renderBenchmarks();
+        }
+
+        function updateScoringPopover() {
+            const popoverContent = `
+                <div class="small">
+                    <p>El score (0-100) pondera los siguientes factores:</p>
+                    <ul>
+                        <li><strong>Eficiencia (35%):</strong> J/TH (Menos es mejor). Protege contra el Halving.</li>
+                        <li><strong>Costo Capital (25%):</strong> $/TH (Menos es mejor).</li>
+                        <li><strong>Payback (25%):</strong> Meses para recuperar inversión.</li>
+                        <li><strong>Infraestructura (15%):</strong> USD generado por cada MWh.</li>
+                    </ul>
+                    <hr>
+                    <strong>Ejemplo Real:</strong><br>
+                    - <strong>Antminer S21:</strong> 17.5 J/TH (Eficiencia tope) -> Score: ~95<br>
+                    - <strong>Whatsminer M50:</strong> 29 J/TH (Consumo alto) -> Score: ~65<br>
+                    <em>El S21 gana por su capacidad de mantener márgenes tras el Halving.</em>
+                </div>
+            `;
+            
+            const popoverEl = document.getElementById('scoring-popover');
+            if (popoverEl) {
+                // Check if popover instance exists and dispose it
+                const existing = bootstrap.Popover.getInstance(popoverEl);
+                if (existing) existing.dispose();
+
+                new bootstrap.Popover(popoverEl, {
+                    content: popoverContent,
+                    html: true,
+                    trigger: 'hover',
+                    placement: 'left'
+                });
+            }
+        }
 
         // Initial calculation
         calculateResults();
@@ -1128,9 +1753,7 @@
         </div>
     </div>
 
-    <div id="results-container">
-        <!-- Results will be loaded here -->
-    </div>
+    <!-- Results container removed from here and moved inside the calculator tab-pane -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function initPopovers() {

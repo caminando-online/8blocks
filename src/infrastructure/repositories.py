@@ -16,7 +16,8 @@ class JsonASICRepository(ASICRepository):
                     model=item['model'],
                     price=Decimal(str(item['price'])),
                     hashrate=Decimal(str(item['hashrate'])),
-                    consumption=Decimal(str(item['consumption']))
+                    consumption=Decimal(str(item['consumption'])),
+                    cooling=item.get('cooling', 'Air')
                 )
                 for item in data
             ]

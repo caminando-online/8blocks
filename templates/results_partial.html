@@ -138,6 +138,50 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <h2 class="mb-4 mt-5"><i class="bi bi-cpu"></i> Bitcoin Generation</h2>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-gradient bg-primary text-white">
+            <h5 class="mb-0">Proyección Anual de Generación</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center">Año</th>
+                            <th>Dificultad Proyectada</th>
+                            <th class="text-end">BTC Generado</th>
+                            <th class="text-end">Equivalencia USD</th>
+                            <th class="text-end text-primary">BTC / MW / h</th>
+                            <th class="text-end text-success">USD / MW / h</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for year_data in results.annual_generation %}
+                        <tr {% if year_data.has_halving %}class="table-warning border-start border-4 border-warning"{% endif %}>
+                            <td class="text-center fw-bold">{{ year_data.year }}</td>
+                            <td>{{ "{:,.0f}".format(year_data.avg_difficulty) }}</td>
+                            <td class="text-end fw-bold">{{ "%.8f"|format(year_data.btc_generated or 0) }} BTC</td>
+
+                            <td class="text-end">${{ "{:,.2f}".format(year_data.usd_revenue or 0) }}</td>
+
+                            <td class="text-end text-primary fw-bold">{{ "%.8f"|format(year_data.btc_per_mwh) }}</td>
+                            <td class="text-end text-success fw-bold">${{ "%.2f"|format(year_data.usd_per_mwh) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i> Los valores de BTC/MW/h y USD/MW/h se calculan sobre la producción total dividida por el consumo real proyectado (MWh).
+            </small>
+        </div>
+    </div>
 
     <h2 class="mb-4 mt-5">Resumen de Electricidad</h2>
     <div class="card">
@@ -166,7 +210,7 @@
                 </div>
                 <div class="col-md-3">
                     <div class="text-center" data-bs-toggle="popover" title="OPC/h ($/MWh)" data-bs-content="Unified real cost per MWh, combining energy and operation. <br><b>Calculation:</b> (${{ "%.2f"|format(results.total_hourly_cost) }} hourly cost) / {{ "%.4f"|format(results.total_power_consumption) }} MW = ${{ "%.2f"|format(results.opc_per_h) }} per MWh.">
-                        <h4 class="text-success">${{ "%.2f"|format(results.opc_per_h) }}</h4>
+                        <h4 class="text-success" id="val_opc_per_h">${{ "%.2f"|format(results.opc_per_h) }}</h4>
                         <p class="text-muted small"><strong>OPC/h ($/MWh)</strong></p>
                     </div>
                 </div>
