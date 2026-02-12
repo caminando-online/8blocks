@@ -501,6 +501,39 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Other Incomes -->
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5>Other Incomes</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="setup_fee_per_unit" class="form-label">Setup Fee (USD / unit)</label>
+                                            <input type="number" step="0.01" class="form-control" id="setup_fee_per_unit" name="setup_fee_per_unit" value="0" oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="disconnect_fee_per_unit" class="form-label">Disconnect Fee (USD / unit)</label>
+                                            <input type="number" step="0.01" class="form-control" id="disconnect_fee_per_unit" name="disconnect_fee_per_unit" value="0" oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="power_warranty_per_unit" class="form-label">Power Warranty (USD / unit)</label>
+                                            <input type="number" step="0.01" class="form-control" id="power_warranty_per_unit" name="power_warranty_per_unit" value="0" oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="power_warranty_interest_rate" class="form-label">Warranty Interest Annual (%)</label>
+                                            <input type="number" step="0.01" class="form-control" id="power_warranty_interest_rate" name="power_warranty_interest_rate" value="0" oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </form>
 
                 <div id="results-container">

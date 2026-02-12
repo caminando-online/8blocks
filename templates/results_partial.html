@@ -85,6 +85,51 @@
         </div>
     </div>
 
+    <h2 class="mb-4 mt-5">Resumen de Otros Ingresos</h2>
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Otros Ingresos (Setup / Garantía)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Concepto</th>
+                        <th>Monto (USD)</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Total Setup Fees</td>
+                        <td>${{ "{:,.2f}".format(results.other_incomes.setup_fees) }}</td>
+                        <td>Cobro único inicial</td>
+                    </tr>
+                    <tr>
+                        <td>Total Disconnect Fees</td>
+                        <td>${{ "{:,.2f}".format(results.other_incomes.disconnect_fees) }}</td>
+                        <td>Cobro único</td>
+                    </tr>
+                    <tr>
+                        <td>Depósito en Garantía (Power Warranty)</td>
+                        <td>${{ "{:,.2f}".format(results.other_incomes.warranty_deposit) }}</td>
+                        <td>Capital retornable</td>
+                    </tr>
+                    <tr class="table-success">
+                        <td>Interés Mensual por Garantía</td>
+                        <td>${{ "{:,.2f}".format(results.other_incomes.monthly_warranty_interest) }}</td>
+                        <td>Ingreso recurrente</td>
+                    </tr>
+                    <tr class="table-success">
+                        <td>Interés Anual por Garantía</td>
+                        <td>${{ "{:,.2f}".format(results.other_incomes.annual_warranty_interest) }}</td>
+                        <td>Ingreso recurrente</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <h2 class="mb-4 mt-5">Resumen de ASIC Details</h2>
     <div class="card">
         <div class="card-header">
@@ -141,45 +186,107 @@
         </div>
     </div>
 
-    <h2 class="mb-4 mt-5"><i class="bi bi-cpu"></i> Bitcoin Generation</h2>
+    <h2 class="mb-4 mt-5"><i class="bi bi-graph-up-arrow"></i> Proyecciones Financieras</h2>
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-gradient bg-primary text-white">
-            <h5 class="mb-0">Proyección Anual de Generación</h5>
+        <div class="card-header bg-gradient bg-dark text-white">
+            <h5 class="mb-0">Desglose de Ingresos y Gastos (8 años)</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead class="table-light">
+                    <thead class="table-dark">
                         <tr>
                             <th class="text-center">Año</th>
-                            <th>Dificultad Proyectada</th>
-                            <th class="text-end">BTC Generado</th>
-                            <th class="text-end">Equivalencia USD</th>
-                            <th class="text-end text-primary">BTC / MW / h</th>
-                            <th class="text-end text-success">USD / MW / h</th>
+                            <th class="text-end">Producción (BTC)</th>
+                            <th class="text-end">Ingresos (USD)</th>
+                            <th class="text-end text-danger">Elec. (USD)</th>
+                            <th class="text-end text-danger">OPEX (USD)</th>
+                            <th class="text-end text-success">Garantía (USD)</th>
+                            <th class="text-end">G. Bruta (USD)</th>
+                            <th class="text-end fw-bold">G. Neta (USD)</th>
+                            <th class="text-center">Margen (%)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for year_data in results.annual_generation %}
-                        <tr {% if year_data.has_halving %}class="table-warning border-start border-4 border-warning"{% endif %}>
+                        <tr>
                             <td class="text-center fw-bold">{{ year_data.year }}</td>
-                            <td>{{ "{:,.0f}".format(year_data.avg_difficulty) }}</td>
-                            <td class="text-end fw-bold">{{ "%.8f"|format(year_data.btc_generated or 0) }} BTC</td>
-
-                            <td class="text-end">${{ "{:,.2f}".format(year_data.usd_revenue or 0) }}</td>
-
-                            <td class="text-end text-primary fw-bold">{{ "%.8f"|format(year_data.btc_per_mwh) }}</td>
-                            <td class="text-end text-success fw-bold">${{ "%.2f"|format(year_data.usd_per_mwh) }}</td>
+                            <td class="text-end">{{ "%.8f"|format(year_data.btc_generated) }}</td>
+                            <td class="text-end">${{ "{:,.2f}".format(year_data.usd_revenue) }}</td>
+                            <td class="text-end text-danger-emphasis">-${{ "{:,.2f}".format(year_data.electricity_cost) }}</td>
+                            <td class="text-end text-danger-emphasis">-${{ "{:,.2f}".format(year_data.opex_cost) }}</td>
+                            <td class="text-end text-success">+${{ "{:,.2f}".format(year_data.warranty_income) }}</td>
+                            <td class="text-end">${{ "{:,.2f}".format(year_data.gross_profit) }}</td>
+                            <td class="text-end fw-bold {% if year_data.net_profit > 0 %}text-success{% else %}text-danger{% endif %}">${{ "{:,.2f}".format(year_data.net_profit) }}</td>
+                            <td class="text-center">
+                                <span class="badge {% if year_data.operating_margin > 20 %}bg-success{% elif year_data.operating_margin > 0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                    {{ "%.1f"|format(year_data.operating_margin) }}%
+                                </span>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
-        <div class="card-footer bg-light">
-            <small class="text-muted">
-                <i class="bi bi-info-circle"></i> Los valores de BTC/MW/h y USD/MW/h se calculan sobre la producción total dividida por el consumo real proyectado (MWh).
-            </small>
+    </div>
+
+    <h2 class="mb-4 mt-5"><i class="bi bi-speedometer2"></i> Métricas Críticas de Control</h2>
+    <div class="row mb-5">
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="text-muted">ROI Total (8 años)</h6>
+                    <h3 class="{% if results.roi > 100 %}text-success{% else %}text-primary{% endif %}">{{ "%.2f"|format(results.roi) }}%</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="text-muted">CAGR (Crecimiento Anual)</h6>
+                    <h3 class="text-info">{{ "%.2f"|format(results.cagr) }}%</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="text-muted">Break-even (USD)</h6>
+                    <h3 class="text-warning">{{ results.break_even_usd }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="text-muted">Break-even (BTC)</h6>
+                    <h3 class="text-warning-emphasis">{{ results.break_even_btc }}</h3>
+                    <small class="text-muted">Inversión: {{ "%.4f"|format(results.investment_in_btc) }} BTC</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mt-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Costo de Producción Promedio (1 BTC)</h6>
+                        <small class="text-muted">Considerando Electricidad + OPEX</small>
+                    </div>
+                    <h2 class="text-primary mb-0">${{ "{:,.2f}".format(results.cost_per_btc) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mt-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Ganancia Neta Total Proyectada</h6>
+                        <small class="text-muted">Después de todos los gastos e ingresos extra</small>
+                    </div>
+                    <h2 class="text-success mb-0">${{ "{:,.2f}".format(results.total_profits_usd) }}</h2>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -240,7 +240,12 @@ def calculate():
             depreciation_years=int(data.get('depreciation_years', '3')),
             price_mode=PriceProjectionMode(data.get('price_method', 'manual')),
             manual_prices=[Decimal(_clean_currency(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0'))) for i in range(1, 9)],
-            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}', '0'))) for i in range(1, 9)]
+            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}', '0'))) for i in range(1, 9)],
+            # Other Incomes
+            setup_fee_per_unit=Decimal(_clean_currency(data.get('setup_fee_per_unit', '0'))),
+            disconnect_fee_per_unit=Decimal(_clean_currency(data.get('disconnect_fee_per_unit', '0'))),
+            power_warranty_per_unit=Decimal(_clean_currency(data.get('power_warranty_per_unit', '0'))),
+            power_warranty_interest_rate=Decimal(_clean_currency(data.get('power_warranty_interest_rate', '0')))
         )
 
         

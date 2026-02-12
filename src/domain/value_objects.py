@@ -72,3 +72,34 @@ class SimulationParams:
     price_mode: PriceProjectionMode = PriceProjectionMode.MANUAL
     manual_prices: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
     manual_difficulty_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
+    # Other Incomes fields
+    setup_fee_per_unit: Decimal = Decimal('0')
+    disconnect_fee_per_unit: Decimal = Decimal('0')
+    power_warranty_per_unit: Decimal = Decimal('0')
+    power_warranty_interest_rate: Decimal = Decimal('0') # Annual percentage
+
+class FinancialMetrics:
+    @staticmethod
+    def calculate_roi(total_profit: Decimal, total_investment: Decimal) -> Decimal:
+        if total_investment <= 0:
+            return Decimal('0')
+        return (total_profit / total_investment) * Decimal('100')
+
+    @staticmethod
+    def calculate_cagr(beginning_value: Decimal, ending_value: Decimal, years: int) -> Decimal:
+        if beginning_value <= 0 or ending_value <= 0 or years <= 0:
+            return Decimal('0')
+        # CAGR = [(EV / BV)^(1 / n)] - 1
+        try:
+            return (Decimal(pow(float(ending_value / beginning_value), 1/years)) - Decimal('1')) * Decimal('100')
+        except:
+            return Decimal('0')
+
+    @staticmethod
+    def calculate_break_even_month(investment: Decimal, monthly_cash_flows: list[Decimal]) -> Optional[int]:
+        cumulative_cash_flow = Decimal('0')
+        for i, flow in enumerate(monthly_cash_flows):
+            cumulative_cash_flow += flow
+            if cumulative_cash_flow >= investment:
+                return i + 1  # 1-indexed month
+        return None
