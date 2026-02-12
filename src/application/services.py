@@ -3,14 +3,17 @@ import os
 from decimal import Decimal
 from typing import Dict, Any
 from ..domain.entities import MiningFarm
-from ..domain.value_objects import SimulationParams, BitcoinNetworkState, PriceProjectionMode
+from ..domain.value_objects import SimulationParams, BitcoinNetworkState, PriceProjectionMode, DifficultyProjectionMode, FinancialMetrics
 
 class MiningSimulationService:
-    def __init__(self, backlog_path: str = None):
+    def __init__(self, backlog_path: str = None, difficulty_backlog_path: str = None):
         # In a real app, this path would be injected
         self.backlog_path = backlog_path or os.path.join('src', 'infrastructure', 'price_backlog.json')
+        self.difficulty_backlog_path = difficulty_backlog_path or os.path.join('src', 'infrastructure', 'difficulty_backlog.json')
         self._backlog_data = None
+        self._difficulty_backlog_data = None
         self._current_year_drift = Decimal('1')
+        self._current_diff_year_drift = Decimal('1')
 
     def _get_backlog_data(self):
         if self._backlog_data is None:
@@ -20,6 +23,15 @@ class MiningSimulationService:
             except Exception:
                 self._backlog_data = []  # type: ignore
         return self._backlog_data
+
+    def _get_difficulty_backlog_data(self):
+        if self._difficulty_backlog_data is None:
+            try:
+                with open(self.difficulty_backlog_path, 'r') as f:
+                    self._difficulty_backlog_data = json.load(f)
+            except Exception:
+                self._difficulty_backlog_data = []  # type: ignore
+        return self._difficulty_backlog_data
 
     def calculate_results(self, farm: MiningFarm, network: BitcoinNetworkState, params: SimulationParams, capex_breakdown: Dict[str, Decimal], power_source: str = "Direct Energy") -> Dict[str, Any]:
         effective_hashrate = farm.total_hashrate * (Decimal('1') - params.downtime_percent / Decimal('100'))
@@ -33,14 +45,16 @@ class MiningSimulationService:
         current_price = network.price_btc_usd
         current_difficulty = network.difficulty
         backlog = self._get_backlog_data()
+        difficulty_backlog = self._get_difficulty_backlog_data()
         self._current_year_drift = Decimal('1')
+        self._current_diff_year_drift = Decimal('1')
         
         # 8-year monthly simulation
         annual_results = []
         year_btc = Decimal('0')
         year_revenue = Decimal('0')
         year_difficulty_sum = Decimal('0')
-        year_had_halving = False
+        year_halving_month = None
         
         simulation_block = network.current_block
         
@@ -79,11 +93,31 @@ class MiningSimulationService:
                 change_pct = Decimal(str(backlog[month_idx % len(backlog)]['change_pct']))  # type: ignore
                 current_price = current_price * (Decimal('1') + change_pct / Decimal('100')) * self._current_year_drift  # type: ignore
 
-            
-            # Update difficulty based on manual variations (monthly compound)
-            if year_idx < len(params.manual_difficulty_variations):
-                diff_change_pct = params.manual_difficulty_variations[year_idx]
-                current_difficulty = current_difficulty * (Decimal('1') + diff_change_pct / Decimal('100'))
+            # Difficulty Projection Logic
+            if params.difficulty_mode == DifficultyProjectionMode.MANUAL:
+                if year_idx < len(params.manual_difficulty_variations):
+                    diff_change_pct = params.manual_difficulty_variations[year_idx]
+                    current_difficulty = current_difficulty * (Decimal('1') + diff_change_pct / Decimal('100'))
+            else:
+                if month_of_year == 0:
+                    target_end_diff = params.manual_difficulty_variations[year_idx] if (year_idx < len(params.manual_difficulty_variations) and params.manual_difficulty_variations[year_idx] > 0) else current_difficulty
+                    year_start_diff = current_difficulty
+                    temp_diff = year_start_diff
+                    for m in range(12):
+                        backlog_idx = month_idx + m
+                        backlog_data = difficulty_backlog[backlog_idx % len(difficulty_backlog)]
+                        cp = Decimal(str(backlog_data['change_pct']))
+                        temp_diff = temp_diff * (Decimal('1') + cp / Decimal('100'))
+                    
+                    natural_end_diff = temp_diff
+                    if natural_end_diff > 0 and target_end_diff > 0:
+                        drift_factor_annual = target_end_diff / natural_end_diff
+                        self._current_diff_year_drift = Decimal(str(pow(float(drift_factor_annual), 1/12)))
+                    else:
+                        self._current_diff_year_drift = Decimal('1')
+
+                change_pct_diff = Decimal(str(difficulty_backlog[month_idx % len(difficulty_backlog)]['change_pct']))
+                current_difficulty = current_difficulty * (Decimal('1') + change_pct_diff / Decimal('100')) * self._current_diff_year_drift
 
             # Determine monthly reward considering halving split
             blocks_in_month = int(144 * 30.41)
@@ -99,10 +133,7 @@ class MiningSimulationService:
             
             for hb in halving_blocks:
                 if simulation_block < hb <= next_simulation_block:
-                    year_had_halving = True
-                    # Weighted average:
-                    # blocks_pre_halving = hb - simulation_block
-                    # blocks_post_halving = next_simulation_block - hb
+                    year_halving_month = month_of_year + 1
                     pre_ratio = Decimal(hb - simulation_block) / Decimal(blocks_in_month)
                     post_ratio = Decimal(1) - pre_ratio
                     new_reward = self._get_reward_for_block(hb)
@@ -141,7 +172,7 @@ class MiningSimulationService:
                     'btc_generated': year_btc,
                     'usd_revenue': year_revenue,
                     'avg_difficulty': year_difficulty_sum / Decimal('12'),
-                    'has_halving': year_had_halving,
+                    'halving_month': year_halving_month,
                     'btc_per_mwh': btc_per_mwh,
                     'usd_per_mwh': usd_per_mwh
                 })
@@ -149,7 +180,7 @@ class MiningSimulationService:
                 year_btc = Decimal('0')
                 year_revenue = Decimal('0')
                 year_difficulty_sum = Decimal('0')
-                year_had_halving = False
+                year_halving_month = None
 
         total_other_capex = sum(capex_breakdown.values())
         total_investment = farm.total_investment + total_other_capex

@@ -7,6 +7,10 @@ class PriceProjectionMode(str, Enum):
     MANUAL = "manual"
     BACKLOG = "backlog"
 
+class DifficultyProjectionMode(str, Enum):
+    MANUAL = "manual"
+    BACKLOG = "backlog"
+
 @dataclass(frozen=True)
 class ASIC:
     model: str
@@ -70,5 +74,6 @@ class SimulationParams:
     operational_costs_annual: Decimal = Decimal('0')
     depreciation_years: int = 3
     price_mode: PriceProjectionMode = PriceProjectionMode.MANUAL
+    difficulty_mode: DifficultyProjectionMode = DifficultyProjectionMode.MANUAL
     manual_prices: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
     manual_difficulty_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify  # type: ignore
 from decimal import Decimal
 from ..schemas.mining import SimulationRequest  # type: ignore
 from ...domain.entities import MiningFarm  # type: ignore
-from ...domain.value_objects import ASIC, BitcoinNetworkState, SimulationParams, PriceProjectionMode  # type: ignore
+from ...domain.value_objects import ASIC, BitcoinNetworkState, SimulationParams, PriceProjectionMode, DifficultyProjectionMode  # type: ignore
 from ...application.services import MiningSimulationService  # type: ignore
 from ...infrastructure.repositories import JsonASICRepository  # type: ignore
 from ...infrastructure.external_apis import ExternalBitcoinApiRepository  # type: ignore
@@ -46,6 +46,8 @@ def home():
                           months_to_halving=network_state.months_to_halving,
                           blocks_to_next_difficulty=network_state.blocks_to_next_difficulty,
                           estimated_next_diff_change=network_state.estimated_next_difficulty_change,
+                          price_backlog=simulation_service._get_backlog_data(),
+                          difficulty_backlog=simulation_service._get_difficulty_backlog_data(),
                           avg_change_6m=1.4,
                           avg_change_12m=1.3,
                           avg_change_24m=1.9,
@@ -239,8 +241,14 @@ def calculate():
             operational_costs_annual=opex_breakdown['total_annual'],
             depreciation_years=int(data.get('depreciation_years', '3')),
             price_mode=PriceProjectionMode(data.get('price_method', 'manual')),
+            difficulty_mode=DifficultyProjectionMode(data.get('difficulty_method', 'manual')),
             manual_prices=[Decimal(_clean_currency(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0'))) for i in range(1, 9)],
-            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}', '0'))) for i in range(1, 9)]
+            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}' if data.get('difficulty_method') == 'manual' else f'backlog_diff_var_{i}', '0'))) for i in range(1, 9)],
+            # Other Incomes
+            setup_fee_per_unit=Decimal(_clean_currency(data.get('setup_fee_per_unit', '0'))),
+            disconnect_fee_per_unit=Decimal(_clean_currency(data.get('disconnect_fee_per_unit', '0'))),
+            power_warranty_per_unit=Decimal(_clean_currency(data.get('power_warranty_per_unit', '0'))),
+            power_warranty_interest_rate=Decimal(_clean_currency(data.get('power_warranty_interest_rate', '0')))
         )
 
         

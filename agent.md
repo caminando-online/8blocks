@@ -60,6 +60,12 @@ description: Autoridad máxima en arquitectura Clean para Python/Flask. Aplica s
 - **Responsabilidad:** Gestiona protocolo HTTP exclusivamente
 - **Contenido:**
   - Blueprints y rutas (endpoints)
+### UI/UX Design Patterns
+- **Two-Column Layout**: The calculator interface is organized into two main columns on large screens:
+  - **Left Column**: All input variables grouped by thematic cards.
+  - **Right Column**: Real-time results and financial projections.
+- **Responsive Grid**: Uses Bootstrap's grid system (`col-lg-6`) to ensure the layout stacks vertically on smaller devices.
+- **Dynamic Updates**: Results are calculated via AJAX and rendered into a dedicated container without page reloads.
   - Schemas Pydantic (DTOs)
   - Middlewares (auth, CORS, rate limiting)
   - Serialización/deserialización JSON
