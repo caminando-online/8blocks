@@ -77,3 +77,8 @@ class SimulationParams:
     difficulty_mode: DifficultyProjectionMode = DifficultyProjectionMode.MANUAL
     manual_prices: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
     manual_difficulty_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
+    # Other Incomes / Fees
+    setup_fee_per_unit: Decimal = Decimal('0')
+    disconnect_fee_per_unit: Decimal = Decimal('0')
+    power_warranty_per_unit: Decimal = Decimal('0')
+    power_warranty_interest_rate: Decimal = Decimal('0')

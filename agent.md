@@ -475,6 +475,36 @@ Tasa que hace NPV = 0
 
 ---
 
+#### 4.2.6 Cálculo de Downtime e Impacto Financiero
+
+**Regla de Negocio:** El downtime representa el tiempo que la granja no produce. Su impacto es asimétrico entre ingresos y gastos.
+
+**Fórmulas de Aplicación:**
+
+1. **Uptime Ratio:**
+   ```
+   uptime_ratio = 1 - (downtime_percent / 100)
+   ```
+
+2. **Impacto en Producción (Ingresos):**
+   ```
+   BTC_Efectivos = BTC_Nominales * uptime_ratio
+   ```
+
+3. **Impacto en Gastos Variables (Electricidad y O&M Variable):**
+   ```
+   Costo_Variable_Efectivo = Costo_Variable_Nominal * uptime_ratio
+   ```
+   *Razón: Si las máquinas están apagadas, no consumen energía ni generan desgaste por uso.*
+
+4. **Impacto en Gastos Fijos (Sueldos, Servicios):**
+   ```
+   Costo_Fijo_Efectivo = Costo_Fijo_Nominal
+   ```
+   *Razón: Los salarios, seguridad e internet se pagan independientemente de si las máquinas operan o no.*
+
+---
+
 ### 4.3 Entidades del Dominio
 
 **Estas son las abstracciones centrales del modelo de negocio.**

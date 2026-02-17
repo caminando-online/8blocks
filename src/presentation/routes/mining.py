@@ -7,6 +7,7 @@ from ...application.services import MiningSimulationService  # type: ignore
 from ...infrastructure.repositories import JsonASICRepository  # type: ignore
 from ...infrastructure.external_apis import ExternalBitcoinApiRepository  # type: ignore
 import os
+import traceback
 
 # Constants
 HOURS_PER_YEAR = Decimal('8760')
@@ -20,16 +21,23 @@ network_repo = ExternalBitcoinApiRepository()
 simulation_service = MiningSimulationService()
 
 def _clean_currency(value: str) -> str:
-    """Removes currency symbols, thousands separators (dots) and replaces decimal comma with dot."""
+    """Removes currency symbols, thousands separators and ensures dot decimal."""
     if not value or not isinstance(value, str):
+        if isinstance(value, (int, float, Decimal)):
+            return str(value)
         return '0'
-    clean = value.replace('$', '').replace('€', '').strip()
-    # Check if format is 1.234,56 (Spanish/European style)
+    
+    clean = value.replace('$', '').replace('€', '').replace('%', '').strip()
+    
+    # Handle European format: 1.234,56
     if '.' in clean and ',' in clean:
-        clean = clean.replace('.', '').replace(',', '.')
+        if clean.rfind('.') < clean.rfind(','): # dot before comma
+            clean = clean.replace('.', '').replace(',', '.')
     elif ',' in clean:
-        # Check if it's 1234,56
+        # Check if it's 1.234 (thousands) or 1,23 (decimal)
+        # If there's only one comma and no dot, assume it's a decimal separator
         clean = clean.replace(',', '.')
+        
     return clean
 
 @mining_bp.route('/')
@@ -49,10 +57,7 @@ def home():
                           price_backlog=simulation_service._get_backlog_data(),
                           difficulty_backlog=simulation_service._get_difficulty_backlog_data(),
                           avg_change_6m=1.4,
-                          avg_change_12m=1.3,
-                          avg_change_24m=1.9,
-                          avg_change_36m=3.2,
-                          avg_change_48m=3.3)
+                          avg_change_12m=1.3)
 
 @mining_bp.route('/network_data')
 def get_network_data():
@@ -71,10 +76,9 @@ def get_network_data():
         return jsonify({"error": str(e)}), 500
 
 def _extract_capex_breakdown(form_data: dict) -> dict:
-    # Create the base dictionary
+    # Create the base dictionary for other items (EXCLUDING ASICs)
     base_capex = {
         'Research': Decimal(form_data.get('research', '0') or '0'),
-        'ASICs': Decimal(form_data.get('asics_unit_value', '0') or '0'),
         'Shelter': Decimal(form_data.get('shelter', '0') or '0'),
         'Generator': Decimal(form_data.get('generator', '0') or '0'),
         'Infrastructure': Decimal(form_data.get('infrastructure', '0') or '0'),
@@ -90,21 +94,20 @@ def _extract_capex_breakdown(form_data: dict) -> dict:
             if item_name:
                 base_capex[item_name] = item_value
 
-    # Calculate Subtotal before financing
-    subtotal = sum(base_capex.values())
+    # For financing calculation, we DO need the subtotal including ASICs
+    asic_investment = Decimal(form_data.get('asics_unit_value', '0') or '0')
+    subtotal_with_asics = sum(base_capex.values()) + asic_investment
     
-    # Financing Cost
+    # Financing Cost calculation based on the full subtotal
     financing_rate = Decimal(form_data.get('financing_rate', '0') or '0')
-    financial_cost = subtotal * (financing_rate / Decimal('100'))
-    
-    if financial_cost > 0:
-        base_capex['Financial Cost'] = financial_cost
-
-    # Calculate Total and add it to the breakdown
-    total_val = subtotal + financial_cost
+    financial_cost = subtotal_with_asics * (financing_rate / Decimal('100'))
     
     result_breakdown: dict = dict(base_capex)
-    result_breakdown['Total'] = total_val
+    if financial_cost > 0:
+        result_breakdown['Financial Cost'] = financial_cost
+
+    # We return ONLY the other items and financial cost. 
+    # ASICs and 'Total' will be added/managed by simulation_service.calculate_results 
     return result_breakdown
 
 
@@ -122,32 +125,6 @@ def _extract_asics(form_data: dict) -> list:
             })
     return asics
 
-def _extract_capex_breakdown(form_data: dict) -> dict:
-    # Helper to extract CAPEX items for reporting
-    capex = {}
-    
-    # Static fields
-    static_fields = {
-        'research': 'Research',
-        'shelter': 'Shelter',
-        'generator': 'Generator',
-        'infrastructure': 'Infrastructure',
-        'general_expenses': 'General Expenses'
-    }
-    
-    for field, label in static_fields.items():
-        val = form_data.get(field, '0')
-        if val and Decimal(val) > 0:
-            capex[label] = Decimal(val)
-
-    # Dynamic items
-    for key, value in form_data.items():
-        if key.startswith('other_capex_') and not key.startswith('other_capex_name_'):
-            idx = key.split('_')[-1]
-            name = form_data.get(f'other_capex_name_{idx}', f'Other CAPEX {idx}')
-            if value and Decimal(value) > 0:
-                capex[name] = Decimal(value)
-    return capex
 
 def _extract_opex_breakdown(form_data: dict) -> dict:
     # Fixed monthly costs (captured under services/operational)
@@ -188,6 +165,17 @@ def _extract_opex_breakdown(form_data: dict) -> dict:
         'other_monthly': other_monthly
     }
 
+
+def _to_json_safe(data):
+    """Recursively converts Decimals to floats for JSON serialization."""
+    if isinstance(data, dict):
+        return {k: _to_json_safe(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_to_json_safe(v) for v in data]
+    elif isinstance(data, Decimal):
+        return float(data)
+    return data
+
 @mining_bp.route('/calculate', methods=['POST'])
 def calculate():
     try:
@@ -220,12 +208,10 @@ def calculate():
         # Determine MWh cost based on source
         power_source = data.get('power_source', 'Direct Energy')
         if power_source == 'Gas powered':
-            mwh_cost = Decimal(data.get('gas_price_per_mwh', '0') or '0')
-            # O&M and Overhauling could be considered additional OPEX
-            # om_annual = (om_per_mwh * farm_kw * 8760) / 1000
-            om_annual = Decimal(data.get('om_per_mwh', '0') or '0') * farm.total_consumption_kw * (HOURS_PER_YEAR / MWH_TO_KWH)
-            # Note: Overhauling is usually a one-time or infrequent large cost, 
-            # for now we'll add it once if provided, but normally it should be amortized.
+            # Sum O&M to MWh pure
+            mwh_cost = Decimal(data.get('gas_price_per_mwh', '0') or '0') + Decimal(data.get('om_per_mwh', '0') or '0')
+            # energy_om_annual should now only contain overhauling (which is currently disabled in UI)
+            om_annual = Decimal('0')
             overhauling = Decimal(data.get('overhauling', '0') or '0')
         else:
             mwh_cost = Decimal(data.get('energy_cost_per_mwh', '0') or '0')
@@ -243,7 +229,7 @@ def calculate():
             price_mode=PriceProjectionMode(data.get('price_method', 'manual')),
             difficulty_mode=DifficultyProjectionMode(data.get('difficulty_method', 'manual')),
             manual_prices=[Decimal(_clean_currency(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0'))) for i in range(1, 9)],
-            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}' if data.get('difficulty_method') == 'manual' else f'backlog_diff_var_{i}', '0'))) for i in range(1, 9)],
+            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}', '0'))) for i in range(1, 9)],
             # Other Incomes
             setup_fee_per_unit=Decimal(_clean_currency(data.get('setup_fee_per_unit', '0'))),
             disconnect_fee_per_unit=Decimal(_clean_currency(data.get('disconnect_fee_per_unit', '0'))),
@@ -257,24 +243,28 @@ def calculate():
         # Execute Use Case
         results = simulation_service.calculate_results(farm, network_state, params, capex_breakdown, power_source=power_source)
         
+
         # Add OPEX breakdown to results for the template
-        # Include Electricity O&M/Overhauling for full visibility
+        # Variable O&M is now handled within electricity costs in the services layer
         results['opex_summary'] = {
-            'monthly_total': opex_breakdown['total_monthly'] + ((om_annual + overhauling) / Decimal('12')),
-            'annual_total': opex_breakdown['total_annual'] + om_annual + overhauling,
+            'monthly_total': opex_breakdown['total_monthly'],
+            'annual_total': opex_breakdown['total_annual'],
             'staff_monthly': opex_breakdown['staff_monthly'],
             'staff_annual': opex_breakdown['staff_monthly'] * Decimal('12'),
             'services_monthly': opex_breakdown['services_monthly'],
             'services_annual': opex_breakdown['services_monthly'] * Decimal('12'),
             'other_monthly': opex_breakdown['other_monthly'],
-            'other_annual': opex_breakdown['other_monthly'] * Decimal('12'),
-            'energy_om_monthly': (om_annual + overhauling) / Decimal('12'),
-            'energy_om_annual': om_annual + overhauling
+            'other_annual': opex_breakdown['other_monthly'] * Decimal('12')
         }
         
-        return render_template('results_partial.html', results=results, btc_price=network_state.price_btc_usd)
+        results_json = _to_json_safe(results)
+        return render_template('results_partial.html', 
+                               results=results, 
+                               results_json=results_json,
+                               btc_price=network_state.price_btc_usd)
         
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
 @mining_bp.route('/export_excel')
