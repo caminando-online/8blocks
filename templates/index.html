@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Mining Farm Calculator</title>
+    <title>{{ _('app_title') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -114,6 +114,36 @@
 
         #theme-toggle:hover {
             transform: scale(1.1);
+        }
+
+        .lang-selector {
+            position: fixed;
+            top: 20px;
+            right: 75px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+        }
+
+        .lang-btn {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-color);
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .lang-btn:hover:not(.active) {
+            background: var(--header-bg);
         }
 
         .modified-value {
@@ -295,6 +325,11 @@
 </head>
 
 <body data-bs-theme="light">
+    <div class="lang-selector">
+        <a href="/set_lang/es" class="lang-btn {% if current_lang == 'es' %}active{% endif %}">ES</a>
+        <a href="/set_lang/en" class="lang-btn {% if current_lang == 'en' %}active{% endif %}">EN</a>
+        <a href="/set_lang/ru" class="lang-btn {% if current_lang == 'ru' %}active{% endif %}">RU</a>
+    </div>
     <button id="theme-toggle" class="btn btn-outline-secondary" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
         <span id="theme-icon">🌙</span>
     </button>
@@ -308,24 +343,24 @@
         })();
     </script>
     <div class="mt-5">
-        <h1>Bitcoin Mining Farm Business Model Calculator</h1>
+        <h1>{{ _('app_title') }}</h1>
 
         <!-- Tab Navigation -->
         <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="calculator-tab" data-bs-toggle="tab" data-bs-target="#calculator"
-                    type="button" role="tab" aria-controls="calculator" aria-selected="true">Calculadora de
-                    Granja</button>
+                    type="button" role="tab" aria-controls="calculator" aria-selected="true">{{ _('tab_calculator')
+                    }}</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard"
                     type="button" role="tab" aria-controls="dashboard" aria-selected="false"
-                    onclick="renderDashboard()">Tablero de Resumen</button>
+                    onclick="renderDashboard()">{{ _('tab_dashboard') }}</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="benchmarks-tab" data-bs-toggle="tab" data-bs-target="#benchmarks"
                     type="button" role="tab" aria-controls="benchmarks" aria-selected="false"
-                    onclick="renderBenchmarks()">Benchmarks ASICs</button>
+                    onclick="renderBenchmarks()">{{ _('tab_benchmarks') }}</button>
             </li>
         </ul>
 
@@ -335,7 +370,7 @@
                 <div class="container-fluid px-4">
                     <div id="dashboard-container">
                         <div class="alert alert-info py-2">
-                            Actualiza los datos en la Calculadora de Granja para ver el tablero resumen.
+                            {{ _('update_data_msg') }}
                         </div>
                     </div>
                 </div>
@@ -353,12 +388,12 @@
                                     <div class="col-md-4">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>CAPEX (Capital Expenditures)</h5>
+                                                <h5>{{ _('capex') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-2">
-                                                    <label for="research" class="form-label small">Research
-                                                        (USD)</label>
+                                                    <label for="research" class="form-label small">{{ _('research')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="research" name="research" value="0">
                                                 </div>
@@ -370,25 +405,26 @@
                                                         readonly>
                                                 </div>
                                                 <div class="mb-2">
-                                                    <label for="shelter" class="form-label small">Shelter (USD)</label>
+                                                    <label for="shelter" class="form-label small">{{ _('shelter')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="shelter" name="shelter" value="0">
                                                 </div>
                                                 <div class="mb-2">
-                                                    <label for="generator" class="form-label small">Generator
-                                                        (USD)</label>
+                                                    <label for="generator" class="form-label small">{{ _('generator')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="generator" name="generator" value="0">
                                                 </div>
                                                 <div class="mb-2">
-                                                    <label for="infrastructure" class="form-label small">Infrastructure
-                                                        (USD)</label>
+                                                    <label for="infrastructure" class="form-label small">{{
+                                                        _('infrastructure') }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="infrastructure" name="infrastructure" value="0">
                                                 </div>
                                                 <div class="mb-2">
-                                                    <label for="general_expenses" class="form-label small">General
-                                                        (USD)</label>
+                                                    <label for="general_expenses" class="form-label small">{{
+                                                        _('general_expenses') }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="general_expenses" name="general_expenses" value="0">
                                                 </div>
@@ -396,10 +432,10 @@
                                                     <!-- Dynamic other fields will be added here -->
                                                 </div>
                                                 <button type="button" class="btn btn-secondary btn-sm mb-2"
-                                                    onclick="addOtherCapex()">Add Other</button>
+                                                    onclick="addOtherCapex()">{{ _('add_other') }}</button>
                                                 <div class="mb-2">
-                                                    <label for="financing_rate" class="form-label small">Financing
-                                                        (%)</label>
+                                                    <label for="financing_rate" class="form-label small">{{
+                                                        _('financing') }}</label>
                                                     <input type="number" step="0.01"
                                                         class="form-control form-control-sm" id="financing_rate"
                                                         name="financing_rate" value="0">
@@ -407,14 +443,14 @@
                                                 <div class="mb-1 form-check">
                                                     <input type="checkbox" class="form-check-input" id="expansion_10mw"
                                                         name="expansion_10mw" value="yes">
-                                                    <label class="form-check-label x-small" for="expansion_10mw">Plan 10
-                                                        MW</label>
+                                                    <label class="form-check-label x-small" for="expansion_10mw">{{
+                                                        _('plan_10mw') }}</label>
                                                 </div>
                                                 <div class="mb-1 form-check">
                                                     <input type="checkbox" class="form-check-input" id="expansion_40mw"
                                                         name="expansion_40mw" value="yes">
-                                                    <label class="form-check-label x-small" for="expansion_40mw">Plan 40
-                                                        MW</label>
+                                                    <label class="form-check-label x-small" for="expansion_40mw">{{
+                                                        _('plan_40mw') }}</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -424,49 +460,49 @@
                                     <div class="col-md-4">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>OPEX (Operating Expenses)</h5>
+                                                <h5>{{ _('opex') }}</h5>
                                             </div>
                                             <div class="card-body">
-                                                <h6><strong>Staff</strong></h6>
+                                                <h6><strong>{{ _('staff') }}</strong></h6>
                                                 <div id="staff_fields">
                                                     <!-- Dynamic staff fields will be added here -->
                                                 </div>
                                                 <button type="button" class="btn btn-secondary btn-sm mb-2"
-                                                    onclick="addStaff()">Add Staff</button>
-                                                <h6><strong>Services</strong></h6>
+                                                    onclick="addStaff()">{{ _('add_staff') }}</button>
+                                                <h6><strong>{{ _('services') }}</strong></h6>
                                                 <div class="mb-1">
-                                                    <label for="insurance" class="form-label x-small">Insurance
-                                                        (USD/mo)</label>
+                                                    <label for="insurance" class="form-label x-small">{{ _('insurance')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="insurance" name="insurance" value="0">
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label for="software" class="form-label x-small">Software
-                                                        (USD/mo)</label>
+                                                    <label for="software" class="form-label x-small">{{ _('software')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="software" name="software" value="0">
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label for="internet" class="form-label x-small">Internet
-                                                        (USD/mo)</label>
+                                                    <label for="internet" class="form-label x-small">{{ _('internet')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="internet" name="internet" value="0">
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label for="security" class="form-label x-small">Security
-                                                        (USD/mo)</label>
+                                                    <label for="security" class="form-label x-small">{{ _('security')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="security" name="security" value="0">
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label for="accounting" class="form-label x-small">Accounting
-                                                        (USD/mo)</label>
+                                                    <label for="accounting" class="form-label x-small">{{
+                                                        _('accounting') }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="accounting" name="accounting" value="0">
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label for="lawyer" class="form-label x-small">Lawyer
-                                                        (USD/mo)</label>
+                                                    <label for="lawyer" class="form-label x-small">{{ _('lawyer')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="lawyer" name="lawyer" value="0">
                                                 </div>
@@ -474,18 +510,18 @@
                                                     <!-- Dynamic service fields will be added here -->
                                                 </div>
                                                 <button type="button" class="btn btn-secondary btn-sm mb-2"
-                                                    onclick="addService()">Add Service</button>
-                                                <h6><strong>Others</strong></h6>
+                                                    onclick="addService()">{{ _('add_service') }}</button>
+                                                <h6><strong>{{ _('others') }}</strong></h6>
                                                 <div class="mb-1">
-                                                    <label for="downtime_percent" class="form-label x-small">Downtime
-                                                        (%)</label>
+                                                    <label for="downtime_percent" class="form-label x-small">{{
+                                                        _('downtime') }}</label>
                                                     <input type="number" step="0.01"
                                                         class="form-control form-control-sm" id="downtime_percent"
                                                         name="downtime_percent" value="0">
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label for="operational_costs" class="form-label x-small">Additional
-                                                        (USD/mo)</label>
+                                                    <label for="operational_costs" class="form-label x-small">{{
+                                                        _('additional_opex') }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="operational_costs" name="operational_costs" value="0">
                                                 </div>
@@ -493,7 +529,7 @@
                                                     <!-- Dynamic other OPEX fields will be added here -->
                                                 </div>
                                                 <button type="button" class="btn btn-secondary btn-sm mb-2"
-                                                    onclick="addOtherOpex()">Add Other</button>
+                                                    onclick="addOtherOpex()">{{ _('add_other') }}</button>
                                             </div>
                                         </div>
                                     </div>
@@ -502,17 +538,17 @@
                                     <div class="col-md-4">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>Electricity</h5>
+                                                <h5>{{ _('electricity') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-3">
-                                                    <label for="power_source" class="form-label small">Power
-                                                        Source</label>
+                                                    <label for="power_source" class="form-label small">{{
+                                                        _('power_source') }}</label>
                                                     <select class="form-control form-control-sm" id="power_source"
                                                         name="power_source" onchange="togglePowerSource()">
                                                         <option value="">--select--</option>
-                                                        <option value="Direct Energy">Direct Energy</option>
-                                                        <option value="Gas powered">Gas powered</option>
+                                                        <option value="Direct Energy">{{ _('direct_energy') }}</option>
+                                                        <option value="Gas powered">{{ _('gas_powered') }}</option>
                                                     </select>
                                                 </div>
                                                 <div id="direct_energy_fields" style="visibility: hidden">
@@ -528,22 +564,23 @@
                                 <div class="mb-4">
                                     <div class="card h-100">
                                         <div class="card-header">
-                                            <h5>ASICs (Details)</h5>
-                                            <a href="/update_asics" class="btn btn-warning btn-sm">Actualizar Datos</a>
+                                            <h5>{{ _('asics_details') }}</h5>
+                                            <a href="/update_asics" class="btn btn-warning btn-sm">{{ _('update_data')
+                                                }}</a>
                                         </div>
                                         <div class="card-body">
                                             <div class="table-responsive">
                                                 <table class="table table-bordered">
                                                     <thead>
                                                         <tr>
-                                                            <th>Modelo</th>
-                                                            <th>Unidades</th>
-                                                            <th>Precio ($)</th>
-                                                            <th>Hashrate (TH/s)</th>
-                                                            <th>Consumo (W)</th>
+                                                            <th>{{ _('model') }}</th>
+                                                            <th>{{ _('units') }}</th>
+                                                            <th>{{ _('price') }}</th>
+                                                            <th>{{ _('hashrate') }}</th>
+                                                            <th>{{ _('consumption') }}</th>
                                                             <th>$/TH</th>
                                                             <th>J/TH</th>
-                                                            <th>Acciones</th>
+                                                            <th>{{ _('actions') }}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="asics_tbody">
@@ -551,8 +588,8 @@
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            <button type="button" class="btn btn-primary mt-3"
-                                                onclick="addAsicRow()">Agregar ASIC</button>
+                                            <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">{{
+                                                _('add_asic') }}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -562,45 +599,46 @@
                                 <div class="mb-4">
                                     <div class="card h-100">
                                         <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h5>Bitcoin Variables</h5>
+                                            <h5>{{ _('bitcoin_variables') }}</h5>
                                             <button type="button" class="btn btn-outline-primary btn-sm"
-                                                onclick="refreshNetworkData()">Actualizar Datos</button>
+                                                onclick="refreshNetworkData()">{{ _('update_data') }}</button>
                                         </div>
                                         <div class="card-body">
                                             <ul class="list-unstyled">
-                                                <li><strong>BTC Price:</strong> $<span id="val_btc_price"
+                                                <li><strong>{{ _('btc_price') }}:</strong> $<span id="val_btc_price"
                                                         data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
-                                                <li><strong>Current Difficulty:</strong> <span id="val_difficulty">{{
+                                                <li><strong>{{ _('current_difficulty') }}:</strong> <span
+                                                        id="val_difficulty">{{
                                                         difficulty }}</span></li>
-                                                <li><strong>Current Block:</strong> <span id="val_block">{{
+                                                <li><strong>{{ _('current_block') }}:</strong> <span id="val_block">{{
                                                         current_block }}</span></li>
-                                                <li><strong>Blocks to Next Halving:</strong> <span
+                                                <li><strong>{{ _('blocks_to_halving') }}:</strong> <span
                                                         id="val_blocks_to_halving">{{ blocks_to_halving }}</span></li>
-                                                <li><strong>Months to Next Halving:</strong> <span
+                                                <li><strong>{{ _('months_to_halving') }}:</strong> <span
                                                         id="val_months_to_halving">{{ "%.1f"|format(months_to_halving)
                                                         }}</span></li>
-                                                <li><strong>Blocks to Next Difficulty Adjustment:</strong> <span
+                                                <li><strong>{{ _('blocks_to_diff') }}:</strong> <span
                                                         id="val_blocks_to_diff">{{ blocks_to_next_difficulty }}</span>
                                                 </li>
-                                                <li><strong>Difficulty Adjustments Every:</strong> 2016 Blocks</li>
-                                                <li><strong>Estimated Next Difficulty Change:</strong> <span
+                                                <li><strong>{{ _('diff_adj_every') }}:</strong> 2016 Blocks</li>
+                                                <li><strong>{{ _('est_diff_change') }}:</strong> <span
                                                         id="val_est_diff_change">{{
                                                         "%.2f"|format(estimated_next_diff_change) }}</span>%</li>
-                                                <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{
+                                                <li><strong>{{ _('avg_diff_6m') }}:</strong> {{
                                                     "%.2f"|format(avg_change_6m) }}%</li>
-                                                <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{
+                                                <li><strong>{{ _('avg_diff_12m') }}:</strong> {{
                                                     "%.2f"|format(avg_change_12m) }}%</li>
-                                                <li><strong>Block Reward:</strong> 3.125 BTC</li>
+                                                <li><strong>{{ _('block_reward') }}:</strong> 3.125 BTC</li>
                                             </ul>
                                             <div class="mb-3">
-                                                <label for="btc_price_override" class="form-label">BTC Price Override
-                                                    (USD) - Leave blank for real-time</label>
+                                                <label for="btc_price_override" class="form-label">{{
+                                                    _('price_override') }}</label>
                                                 <input type="number" step="0.01" class="form-control"
                                                     id="btc_price_override" name="btc_price_override">
                                             </div>
                                             <div class="mb-3">
-                                                <label for="difficulty_override" class="form-label">Difficulty Override
-                                                    - Leave blank for real-time</label>
+                                                <label for="difficulty_override" class="form-label">{{
+                                                    _('diff_override') }}</label>
                                                 <input type="number" step="1" class="form-control"
                                                     id="difficulty_override" name="difficulty_override">
                                             </div>
@@ -614,27 +652,26 @@
                                     <div class="col-md-6">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>Bitcoin Price Variables</h5>
+                                                <h5>{{ _('price_variables') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-3">
-                                                    <label for="price_method" class="form-label small">Pricing
-                                                        Method</label>
+                                                    <label for="price_method" class="form-label small">{{
+                                                        _('pricing_method') }}</label>
                                                     <select class="form-control form-control-sm" id="price_method"
                                                         name="price_method" onchange="togglePriceMethod()">
-                                                        <option value="manual">Manual Input</option>
-                                                        <option value="backlog">Backlog Based</option>
+                                                        <option value="manual">{{ _('manual_input') }}</option>
+                                                        <option value="backlog">{{ _('backlog_based') }}</option>
                                                     </select>
                                                 </div>
                                                 <div id="manual_price_fields">
-                                                    <p class="text-muted x-small">Estimated **annual variation (%)** /
-                                                        year.</p>
+                                                    <p class="text-muted x-small">{{ _('est_annual_var') }}</p>
                                                     <div class="row g-1">
                                                         {% for i in range(1, 9) %}
                                                         <div class="col-6 mb-1">
                                                             <label for="manual_price_{{ i }}"
                                                                 class="form-label x-small">Y{{ i }} (%)</label>
-                                                            <input type="number" step="0.1"
+                                                            <input type="text" inputmode="decimal"
                                                                 class="form-control form-control-sm"
                                                                 name="manual_price_{{ i }}" id="manual_price_{{ i }}"
                                                                 value="0.0"
@@ -660,27 +697,26 @@
                                     <div class="col-md-6">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>Difficulty Projections</h5>
+                                                <h5>{{ _('difficulty_projections') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-3">
-                                                    <label for="difficulty_method" class="form-label small">Projection
-                                                        Method</label>
+                                                    <label for="difficulty_method" class="form-label small">{{
+                                                        _('pricing_method') }}</label>
                                                     <select class="form-control form-control-sm" id="difficulty_method"
                                                         name="difficulty_method" onchange="toggleDifficultyMethod()">
-                                                        <option value="manual">Manual Input</option>
-                                                        <option value="backlog">Backlog Based</option>
+                                                        <option value="manual">{{ _('manual_input') }}</option>
+                                                        <option value="backlog">{{ _('backlog_based') }}</option>
                                                     </select>
                                                 </div>
                                                 <div id="difficulty_input_group">
-                                                    <p class="text-muted x-small">Estimated <strong>avg monthly change
-                                                            (%)</strong> / year.</p>
+                                                    <p class="text-muted x-small">{{ _('est_avg_monthly_change') }}</p>
                                                     <div class="row g-1" id="difficulty_fields_container">
                                                         {% for i in range(1, 9) %}
                                                         <div class="col-6 mb-1">
                                                             <label for="manual_diff_var_{{ i }}"
                                                                 class="form-label x-small">Y{{ i }} (%)</label>
-                                                            <input type="number" step="0.01"
+                                                            <input type="text" inputmode="decimal"
                                                                 class="form-control form-control-sm"
                                                                 name="manual_diff_var_{{ i }}"
                                                                 id="manual_diff_var_{{ i }}" value="0.00"
@@ -706,22 +742,23 @@
                                     <div class="col-md-6">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>Depreciation</h5>
+                                                <h5>{{ _('depreciation') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-3">
-                                                    <label for="depreciation_years" class="form-label small">Period
-                                                        (Years)</label>
+                                                    <label for="depreciation_years" class="form-label small">{{
+                                                        _('period_years') }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="depreciation_years" name="depreciation_years" value="3">
                                                 </div>
                                                 <div class="mb-3">
-                                                    <label for="depreciation_method"
-                                                        class="form-label small">Method</label>
+                                                    <label for="depreciation_method" class="form-label small">{{
+                                                        _('method') }}</label>
                                                     <select class="form-control form-control-sm"
                                                         id="depreciation_method" name="depreciation_method">
-                                                        <option value="linear">Linear</option>
-                                                        <option value="declining">Declining Balance</option>
+                                                        <option value="linear">{{ _('linear') }}</option>
+                                                        <option value="declining_balance">{{ _('declining_balance') }}
+                                                        </option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -732,15 +769,15 @@
                                     <div class="col-md-6">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>Other Incomes</h5>
+                                                <h5>{{ _('other_incomes') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="row g-2">
                                                     <!-- Left Col: Fees -->
                                                     <div class="col-6">
                                                         <div class="mb-2">
-                                                            <label for="setup_fee_per_unit"
-                                                                class="form-label small">Setup (USD/u)</label>
+                                                            <label for="setup_fee_per_unit" class="form-label small">{{
+                                                                _('setup_fee') }}</label>
                                                             <input type="number" step="0.01"
                                                                 class="form-control form-control-sm"
                                                                 id="setup_fee_per_unit" name="setup_fee_per_unit"
@@ -748,7 +785,8 @@
                                                         </div>
                                                         <div class="mb-2">
                                                             <label for="disconnect_fee_per_unit"
-                                                                class="form-label small">Disconnect (USD/u)</label>
+                                                                class="form-label small">{{ _('disconnect_fee')
+                                                                }}</label>
                                                             <input type="number" step="0.01"
                                                                 class="form-control form-control-sm"
                                                                 id="disconnect_fee_per_unit"
@@ -760,7 +798,7 @@
                                                     <div class="col-6">
                                                         <div class="mb-2">
                                                             <label for="power_warranty_per_unit"
-                                                                class="form-label small">Warranty (USD/u)</label>
+                                                                class="form-label small">{{ _('warranty') }}</label>
                                                             <input type="number" step="0.01"
                                                                 class="form-control form-control-sm"
                                                                 id="power_warranty_per_unit"
@@ -769,7 +807,7 @@
                                                         </div>
                                                         <div class="mb-2">
                                                             <label for="power_warranty_interest_rate"
-                                                                class="form-label small">Interest (%)</label>
+                                                                class="form-label small">{{ _('interest') }}</label>
                                                             <input type="number" step="0.01"
                                                                 class="form-control form-control-sm"
                                                                 id="power_warranty_interest_rate"
@@ -788,15 +826,15 @@
                                     <div class="col-12">
                                         <div class="card h-100">
                                             <div class="card-header">
-                                                <h5>Taxes</h5>
+                                                <h5>{{ _('taxes') }}</h5>
                                             </div>
                                             <div class="card-body">
                                                 <div class="mb-3">
-                                                    <label for="taxes_rate" class="form-label small">Tax Rate
-                                                        (%)</label>
+                                                    <label for="taxes_rate" class="form-label small">{{ _('tax_rate')
+                                                        }}</label>
                                                     <input type="number" class="form-control form-control-sm"
                                                         id="taxes_rate" name="taxes_rate" disabled
-                                                        placeholder="To be developed">
+                                                        placeholder="{{ _('to_be_developed') }}">
                                                 </div>
                                             </div>
                                         </div>
@@ -1387,8 +1425,8 @@
                 if (/[0-9]/.test(key)) {
                     return true;
                 }
-                // Allow decimal point if requested and not already present
-                if (allowDecimal && key === '.' && !event.target.value.includes('.')) {
+                // Allow decimal point or comma if requested and not already present
+                if (allowDecimal && (key === '.' || key === ',') && !event.target.value.includes('.') && !event.target.value.includes(',')) {
                     return true;
                 }
                 // Ignore everything else
@@ -1666,9 +1704,9 @@
                 const form = document.querySelector('form');
                 const formData = new FormData(form);
 
-                // Clean formatted price inputs before sending
+                // Clean formatted price and difficulty inputs before sending
                 for (let [key, value] of formData.entries()) {
-                    if (key.includes('manual_price_') || key.includes('backlog_price_')) {
+                    if (key.includes('manual_price_') || key.includes('backlog_price_') || key.includes('manual_diff_var_')) {
                         formData.set(key, parseDisplayCurrency(value));
                     }
                 }
@@ -2013,6 +2051,12 @@
 
 
         <script>
+            const translations = {{ all_translations| tojson | safe }};
+
+            function _(key) {
+                return translations[key] || key;
+            }
+
             function renderDashboard() {
                 const resultsDataEl = document.getElementById('results-data-json');
                 if (!resultsDataEl) {
@@ -2032,11 +2076,11 @@
                         <div class="col-12">
                             <div class="bg-gradient p-3 rounded text-white d-flex justify-content-between align-items-center" style="background-color: #217346;">
                                 <div>
-                                    <h3 class="mb-0">BUSINESS PLAN: ${res.farm_name || 'PROYECTO BITCOIN'}</h3>
-                                    <p class="mb-0 opacity-75">Informe de Proyecciones Financieras Unificadas</p>
+                                    <h3 class="mb-0">${_('dashboard_title')}: ${res.farm_name || 'PROYECTO BITCOIN'}</h3>
+                                    <p class="mb-0 opacity-75">${_('dashboard_report')}</p>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-white text-dark p-2">CONFIDENCIAL</span>
+                                    <span class="badge bg-white text-dark p-2">${_('confidential')}</span>
                                 </div>
                             </div>
                         </div>
@@ -2046,25 +2090,25 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <div class="excel-kpi-box text-center">
-                                <div class="excel-kpi-label">Retorno Inversión (ROI)</div>
+                                <div class="excel-kpi-label">${_('roi')}</div>
                                 <div class="excel-kpi-value text-success">${res.roi.toFixed(1)}%</div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="excel-kpi-box text-center">
-                                <div class="excel-kpi-label">CAGR (Crecimiento Anual)</div>
+                                <div class="excel-kpi-label">${_('cagr')}</div>
                                 <div class="excel-kpi-value text-info">${res.cagr.toFixed(1)}%</div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="excel-kpi-box text-center">
-                                <div class="excel-kpi-label">Punto Equilibrio (Tiempo)</div>
+                                <div class="excel-kpi-label">${_('break_even')}</div>
                                 <div class="excel-kpi-value text-warning">${res.break_even_usd}</div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="excel-kpi-box text-center">
-                                <div class="excel-kpi-label">Costo Prod. (1 BTC)</div>
+                                <div class="excel-kpi-label">${_('cost_per_btc_label')}</div>
                                 <div class="excel-kpi-value text-primary">$${formatDisplayCurrency(res.cost_per_btc)}</div>
                             </div>
                         </div>
@@ -2076,21 +2120,21 @@
                             <table class="excel-table shadow-sm">
                                 <thead>
                                     <tr>
-                                        <th colspan="12" class="excel-header-main text-uppercase">Flujo de Caja Consolidado y Proyecciones Operativas (8 Años)</th>
+                                        <th colspan="12" class="excel-header-main text-uppercase">${_('flujo_consolidado')}</th>
                                     </tr>
                                     <tr>
-                                        <th>Año</th>
-                                        <th>BTC Prod</th>
-                                        <th>Ingresos Minería</th>
-                                        <th>Otros Ingresos</th>
-                                        <th>Ingresos Totales</th>
-                                        <th>Costos Elec.</th>
-                                        <th>OPEX (Fijo)</th>
-                                        <th>EBITDA</th>
-                                        <th>Depreciación</th>
-                                        <th>Resultado Neto</th>
-                                        <th>Margen %</th>
-                                        <th>Flujo Acum.</th>
+                                        <th>${_('year')}</th>
+                                        <th>${_('btc_prod')}</th>
+                                        <th>${_('mining_rev')}</th>
+                                        <th>${_('other_rev')}</th>
+                                        <th>${_('total_rev')}</th>
+                                        <th>${_('elec_cost')}</th>
+                                        <th>${_('opex_fixed')}</th>
+                                        <th>${_('ebitda')}</th>
+                                        <th>${_('depreciation_label')}</th>
+                                        <th>${_('net_profit')}</th>
+                                        <th>${_('margin')}</th>
+                                        <th>${_('cumulative_flow')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2117,7 +2161,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="fw-bold" style="background-color: var(--bs-secondary-bg);">
-                                        <td colspan="2" class="text-center">TOTALES</td>
+                                        <td colspan="2" class="text-center">${_('totals')}</td>
                                         <td>$${formatDisplayCurrency(res.annual_generation.reduce((acc, y) => acc + y.usd_revenue, 0))}</td>
                                         <td class="text-success">$${formatDisplayCurrency(res.annual_generation.reduce((acc, y) => acc + y.other_income, 0))}</td>
                                         <td>$${formatDisplayCurrency(res.annual_generation.reduce((acc, y) => acc + y.total_revenue, 0))}</td>
@@ -2140,18 +2184,18 @@
                             <table class="excel-table shadow-sm mb-4">
                                 <thead>
                                     <tr>
-                                        <th colspan="4" class="excel-header-main">ESTADO DE RECUPERACIÓN DE INVERSIÓN</th>
+                                        <th colspan="4" class="excel-header-main">${_('recovery_status')}</th>
                                     </tr>
                                     <tr>
-                                        <th>Año</th>
-                                        <th>Flujo Neto Anual</th>
-                                        <th>Retorno Acumulado</th>
-                                        <th>Inversión Pendiente</th>
+                                        <th>${_('year')}</th>
+                                        <th>${_('annual_net_flow')}</th>
+                                        <th>${_('accumulated_return')}</th>
+                                        <th>${_('pending_investment')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td class="text-center fw-bold">Año 0</td>
+                                        <td class="text-center fw-bold">${_('year_0')}</td>
                                         <td class="text-danger">($${formatDisplayCurrency(res.investment)})</td>
                                         <td class="text-danger">$0.00</td>
                                         <td class="fw-bold text-danger">($${formatDisplayCurrency(res.investment)})</td>
@@ -2168,7 +2212,7 @@
                                                     <td class="${y.net_profit >= 0 ? 'text-success' : 'text-danger'}">$${formatDisplayCurrency(y.net_profit)}</td>
                                                     <td class="text-success">$${formatDisplayCurrency(runningReturn)}</td>
                                                     <td class="${isRecovered ? 'text-success' : 'text-danger'} fw-bold">
-                                                        ${isRecovered ? 'RECUPERADO' : `($${formatDisplayCurrency(pending)})`}
+                                                        ${isRecovered ? _('recovered') : `($${formatDisplayCurrency(pending)})`}
                                                     </td>
                                                 </tr>
                                             `;
@@ -2182,12 +2226,12 @@
                         <div class="col-lg-5">
                             <div class="card shadow-sm border-0 mb-4" style="background: var(--bs-tertiary-bg);">
                                 <div class="card-header excel-header-main">
-                                    RESUMEN ESTRUCTURA DE COSTOS
+                                    ${_('cost_structure')}
                                 </div>
                                 <div class="card-body p-0">
                                     <table class="excel-table border-0">
                                         <tr>
-                                            <td class="text-start excel-sub-header" colspan="2">Inversión Inicial (CAPEX)</td>
+                                            <td class="text-start excel-sub-header" colspan="2">${_('initial_investment')}</td>
                                         </tr>
                                         ${Object.entries(res.capex_breakdown).filter(([k]) => k !== 'Total').map(([name, val]) => `
                                             <tr>
@@ -2196,18 +2240,18 @@
                                             </tr>
                                         `).join('')}
                                         <tr class="fw-bold" style="border-top: 2px solid #217346;">
-                                            <td class="text-start">TOTAL CAPEX</td>
+                                            <td class="text-start">${_('total_capex')}</td>
                                             <td class="text-primary">$${formatDisplayCurrency(res.capex_breakdown.Total)}</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-start excel-sub-header" colspan="2">Gastos Operativos (OPEX Mensual)</td>
+                                            <td class="text-start excel-sub-header" colspan="2">${_('monthly_opex')}</td>
                                         </tr>
-                                        <tr><td class="text-start">Nómina y Personal</td><td>$${formatDisplayCurrency(res.opex_summary.staff_monthly)}</td></tr>
-                                        <tr><td class="text-start">Servicios y Fijos</td><td>$${formatDisplayCurrency(res.opex_summary.services_monthly)}</td></tr>
-                                        <tr><td class="text-start">Energía Pure (MWh)</td><td>$${res.energy_cost_per_mwh_pure.toFixed(2)}</td></tr>
-                                        <tr><td class="text-start">O&M Variable (MWh)</td><td>$${res.hourly_variable_maintenance.toFixed(2)}</td></tr>
+                                        <tr><td class="text-start">${_('payroll')}</td><td>$${formatDisplayCurrency(res.opex_summary.staff_monthly)}</td></tr>
+                                        <tr><td class="text-start">${_('services_fixed')}</td><td>$${formatDisplayCurrency(res.opex_summary.services_monthly)}</td></tr>
+                                        <tr><td class="text-start">${_('pure_energy')}</td><td>$${res.energy_cost_per_mwh_pure.toFixed(2)}</td></tr>
+                                        <tr><td class="text-start">${_('variable_om')}</td><td>$${res.hourly_variable_maintenance.toFixed(2)}</td></tr>
                                         <tr class="fw-bold" style="border-top: 2px solid #2e7d32; background-color: var(--bs-secondary-bg);">
-                                            <td class="text-start">OPC/h Final Unified</td>
+                                            <td class="text-start">${_('unified_opc')}</td>
                                             <td class="text-success">$${res.opc_per_h.toFixed(2)}</td>
                                         </tr>
                                     </table>
@@ -2216,7 +2260,7 @@
                             
                             <div class="alert alert-info shadow-sm">
                                 <i class="bi bi-info-circle-fill me-2"></i>
-                                <strong>Nota Técnica:</strong> El "Flujo Acumulado" descuenta la inversión inicial desde el Año 0 y suma el Resultado Neto de cada periodo.
+                                <strong>${_('technical_note')}:</strong> ${_('technical_note_msg')}
                             </div>
                         </div>
                     </div>
@@ -2236,13 +2280,40 @@
                     if (existing) existing.dispose();
 
                     return new bootstrap.Popover(popoverTriggerEl, {
-                        trigger: 'hover',
+                        trigger: 'hover focus',
                         placement: 'top',
                         container: 'body',
-                        html: true
+                        html: true,
+                        boundary: 'viewport',
+                        fallbackPlacements: ['bottom', 'right', 'left'],
+                        customClass: 'popover-dismissible'
                     });
                 });
             }
+
+            // Dismiss all popovers on scroll to prevent them from getting stuck
+            let scrollDismissTimer = null;
+            window.addEventListener('scroll', function () {
+                if (scrollDismissTimer) clearTimeout(scrollDismissTimer);
+                scrollDismissTimer = setTimeout(function () {
+                    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+                        const instance = bootstrap.Popover.getInstance(el);
+                        if (instance) instance.hide();
+                    });
+                }, 50);
+            }, true);
+
+            // Also dismiss on any scrollable container within the page
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.overflow-auto, .table-responsive, .card-body').forEach(function (container) {
+                    container.addEventListener('scroll', function () {
+                        document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+                            const instance = bootstrap.Popover.getInstance(el);
+                            if (instance) instance.hide();
+                        });
+                    });
+                });
+            });
         </script>
 </body>
 

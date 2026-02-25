@@ -73,6 +73,7 @@ class SimulationParams:
     downtime_percent: Decimal = Decimal('0')
     operational_costs_annual: Decimal = Decimal('0')
     depreciation_years: int = 3
+    depreciation_method: str = 'linear'
     price_mode: PriceProjectionMode = PriceProjectionMode.MANUAL
     difficulty_mode: DifficultyProjectionMode = DifficultyProjectionMode.MANUAL
     manual_prices: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)

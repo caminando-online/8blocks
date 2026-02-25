@@ -45,6 +45,9 @@ def _clean_currency(value: str) -> str:
 def home():
     network_state = network_repo.get_current_state()
     asics = asic_repo.get_all()
+    diff_backlog = simulation_service._get_difficulty_backlog_data()
+    avg_change_6m = round(sum(d['change_pct'] for d in diff_backlog[-6:]) / 6, 2) if len(diff_backlog) >= 6 else 0
+    avg_change_12m = round(sum(d['change_pct'] for d in diff_backlog[-12:]) / 12, 2) if len(diff_backlog) >= 12 else 0
     return render_template('index.html', 
                           asics_data=asics,
                           btc_price=network_state.price_btc_usd,
@@ -55,9 +58,9 @@ def home():
                           blocks_to_next_difficulty=network_state.blocks_to_next_difficulty,
                           estimated_next_diff_change=network_state.estimated_next_difficulty_change,
                           price_backlog=simulation_service._get_backlog_data(),
-                          difficulty_backlog=simulation_service._get_difficulty_backlog_data(),
-                          avg_change_6m=1.4,
-                          avg_change_12m=1.3)
+                          difficulty_backlog=diff_backlog,
+                          avg_change_6m=avg_change_6m,
+                          avg_change_12m=avg_change_12m)
 
 @mining_bp.route('/network_data')
 def get_network_data():
@@ -78,11 +81,11 @@ def get_network_data():
 def _extract_capex_breakdown(form_data: dict) -> dict:
     # Create the base dictionary for other items (EXCLUDING ASICs)
     base_capex = {
-        'Research': Decimal(form_data.get('research', '0') or '0'),
-        'Shelter': Decimal(form_data.get('shelter', '0') or '0'),
-        'Generator': Decimal(form_data.get('generator', '0') or '0'),
-        'Infrastructure': Decimal(form_data.get('infrastructure', '0') or '0'),
-        'General Expenses': Decimal(form_data.get('general_expenses', '0') or '0'),
+        'research': Decimal(form_data.get('research', '0') or '0'),
+        'shelter': Decimal(form_data.get('shelter', '0') or '0'),
+        'generator': Decimal(form_data.get('generator', '0') or '0'),
+        'infrastructure': Decimal(form_data.get('infrastructure', '0') or '0'),
+        'general_expenses': Decimal(form_data.get('general_expenses', '0') or '0'),
     }
     
     # Extract dynamic CAPEX items
@@ -104,7 +107,7 @@ def _extract_capex_breakdown(form_data: dict) -> dict:
     
     result_breakdown: dict = dict(base_capex)
     if financial_cost > 0:
-        result_breakdown['Financial Cost'] = financial_cost
+        result_breakdown['financing'] = financial_cost
 
     # We return ONLY the other items and financial cost. 
     # ASICs and 'Total' will be added/managed by simulation_service.calculate_results 
@@ -206,8 +209,10 @@ def calculate():
             )
             
         # Determine MWh cost based on source
-        power_source = data.get('power_source', 'Direct Energy')
-        if power_source == 'Gas powered':
+        power_source_raw = data.get('power_source', 'direct_energy')
+        power_source = power_source_raw.lower().replace(' ', '_')
+        
+        if power_source == 'gas_powered':
             # Sum O&M to MWh pure
             mwh_cost = Decimal(data.get('gas_price_per_mwh', '0') or '0') + Decimal(data.get('om_per_mwh', '0') or '0')
             # energy_om_annual should now only contain overhauling (which is currently disabled in UI)
@@ -226,6 +231,7 @@ def calculate():
             downtime_percent=Decimal(_clean_currency(data.get('downtime_percent', '0'))),
             operational_costs_annual=opex_breakdown['total_annual'],
             depreciation_years=int(data.get('depreciation_years', '3')),
+            depreciation_method=data.get('depreciation_method', 'linear'),
             price_mode=PriceProjectionMode(data.get('price_method', 'manual')),
             difficulty_mode=DifficultyProjectionMode(data.get('difficulty_method', 'manual')),
             manual_prices=[Decimal(_clean_currency(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0'))) for i in range(1, 9)],

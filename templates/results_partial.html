@@ -3,9 +3,9 @@
     <div class="col-xl-6 col-md-12">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h6 class="mb-0">Desglose de Gastos de Capital (CAPEX)</h6>
+                <h6 class="mb-0">{{ _('capex_summary') }}</h6>
                 <button type="button" class="btn btn-sm btn-outline-primary" style="font-size: 0.75rem;"
-                    onclick="calculateResults()">Update data</button>
+                    onclick="calculateResults()">{{ _('update_data') }}</button>
             </div>
 
             <div class="card-body p-2">
@@ -13,16 +13,16 @@
                     <table class="table table-sm table-striped mb-0" style="font-size: 0.85rem;">
                         <thead>
                             <tr>
-                                <th>Concepto</th>
-                                <th>Monto (USD)</th>
-                                <th>Monto (BTC)</th>
+                                <th>{{ _('concept') }}</th>
+                                <th>{{ _('amount_usd') }}</th>
+                                <th>{{ _('amount_btc') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for key, value in results.capex_breakdown.items() %}
                             {% if key != 'Total' %}
                             <tr>
-                                <td>{{ key }}</td>
+                                <td>{{ _(key) }}</td>
                                 <td>${{ value }}</td>
                                 <td>{{ "%.8f"|format(value / btc_price) }} BTC</td>
                             </tr>
@@ -32,7 +32,7 @@
 
                         <tfoot>
                             <tr class="table-dark">
-                                <th>Total CAPEX</th>
+                                <th>{{ _('total_capex') }}</th>
                                 <th>${{ results.capex_breakdown['Total'] }}</th>
                                 <th>{{ "%.8f"|format(results.capex_breakdown['Total'] / btc_price) }} BTC</th>
                             </tr>
@@ -47,7 +47,7 @@
     <div class="col-xl-6 col-md-12">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h6 class="mb-0">Gastos Operativos (OPEX)</h6>
+                <h6 class="mb-0">{{ _('opex_summary') }}</h6>
                 <div style="height: 31px;"></div> <!-- Spacer to match CAPEX button height -->
             </div>
             <div class="card-body p-2">
@@ -55,31 +55,31 @@
                     <table class="table table-sm table-striped mb-0" style="font-size: 0.85rem;">
                         <thead>
                             <tr>
-                                <th>Concepto</th>
-                                <th>Mensual (USD)</th>
-                                <th>Anual (USD)</th>
+                                <th>{{ _('concept') }}</th>
+                                <th>{{ _('monthly_usd') }}</th>
+                                <th>{{ _('annual_usd') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Total sueldos</td>
+                                <td>{{ _('total_staff') }}</td>
                                 <td>${{ "%.2f"|format(results.opex_summary.staff_monthly) }}</td>
                                 <td>${{ "%.2f"|format(results.opex_summary.staff_annual) }}</td>
                             </tr>
                             <tr>
-                                <td>Total servicios</td>
+                                <td>{{ _('total_services') }}</td>
                                 <td>${{ "%.2f"|format(results.opex_summary.services_monthly) }}</td>
                                 <td>${{ "%.2f"|format(results.opex_summary.services_annual) }}</td>
                             </tr>
                             <tr>
-                                <td>Total otros</td>
+                                <td>{{ _('total_others') }}</td>
                                 <td>${{ "%.2f"|format(results.opex_summary.other_monthly) }}</td>
                                 <td>${{ "%.2f"|format(results.opex_summary.other_annual) }}</td>
                             </tr>
                         </tbody>
                         <tfoot>
                             <tr class="table-dark">
-                                <th>Total OPEX</th>
+                                <th>{{ _('total_opex') }}</th>
                                 <th>${{ "%.2f"|format(results.opex_summary.monthly_total) }}</th>
                                 <th>${{ "%.2f"|format(results.opex_summary.annual_total) }}</th>
                             </tr>
@@ -96,28 +96,29 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header py-2">
-                <h6 class="mb-0">Configuración de Energía</h6>
+                <h6 class="mb-0">{{ _('energy_config') }}</h6>
             </div>
             <div class="card-body p-2">
                 <!-- Fila 1: MWh Puro vs Fuente/Consumo -->
                 <div class="row g-2 text-center mb-2">
                     <div class="col-6">
                         <div class="p-2 border rounded h-100 d-flex flex-column justify-content-center"
-                            data-bs-toggle="popover" title="Pure MWh Cost"
-                            data-bs-content="Base price level for electrical energy set for 1 Megawatt-hour. <br><b>Calculation:</b> ${{ '%.2f'|format(results.energy_cost_per_mwh_pure) }} per MWh.">
-                            <div class="text-muted small">MWh Puro</div>
+                            data-bs-toggle="popover" title="{{ _('mwh_puro') }}"
+                            data-bs-content="Base price level for electrical energy set for 1 Megawatt-hour. {% if results.power_source == 'gas_powered' %}<br><b>Note:</b> Includes Gas Cost + O&M.{% endif %} <br><b>Calculation:</b> ${{ '%.2f'|format(results.energy_cost_per_mwh_pure) }} per MWh.">
+                            <div class="text-muted small">{{ _('mwh_puro') }}</div>
                             <div class="fw-bold" style="font-size: 1.3rem;">${{
                                 "%.2f"|format(results.energy_cost_per_mwh_pure) }}</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="p-2 border rounded mb-2">
-                            <div class="text-muted small">Fuente</div>
-                            <div class="text-primary fw-bold" style="font-size: 1.3rem;">{{ results.power_source }}
+                            <div class="text-muted small">{{ _('source') }}</div>
+                            <div class="text-primary fw-bold" style="font-size: 1.3rem;">{{
+                                _(results.power_source|lower|replace(' ', '_')) }}
                             </div>
                         </div>
                         <div class="p-2 border rounded">
-                            <div class="text-muted small">Consumo</div>
+                            <div class="text-muted small">{{ _('consumption_short') }}</div>
                             <div class="fw-bold" style="font-size: 1.3rem;">{{ results.total_power_consumption }} MW
                             </div>
                         </div>
@@ -129,7 +130,7 @@
                     <div class="col-4">
                         <div class="p-2 border rounded" data-bs-toggle="popover" title="Hourly Energy Cost"
                             data-bs-content="Pure electricity cost incurred every hour based on current farm power. <br><b>Calculation:</b> ${{ '%.2f'|format(results.energy_cost_per_mwh_pure) }}/MWh * {{ '%.4f'|format(results.total_power_consumption) }} MW=${{ '%.2f'|format(results.hourly_energy_cost) }} per hour.">
-                            <div class="text-muted small">Elec/h</div>
+                            <div class="text-muted small">{{ _('elec_h') }}</div>
                             <div class="fw-bold" style="font-size: 1.1rem;">${{
                                 "%.0f"|format(results.hourly_energy_cost) }}
                             </div>
@@ -138,7 +139,7 @@
                     <div class="col-4">
                         <div class="p-2 border rounded" data-bs-toggle="popover" title="Hourly OPEX"
                             data-bs-content="Fixed operational expense for every hour. Calculated as Monthly Fixed OPEX / 729.84 hours. <br><b>Calculation:</b> ${{ '%.2f'|format(results.monthly_opex or 0) }} monthly / 729.84h=${{ '%.2f'|format(results.hourly_opex) }} per hour.">
-                            <div class="text-muted small">OPEX Fijo/h</div>
+                            <div class="text-muted small">{{ _('opex_fixed_h') }}</div>
                             <div class="fw-bold" style="font-size: 1.1rem;">${{ "%.0f"|format(results.hourly_opex) }}
                             </div>
                         </div>
@@ -146,7 +147,7 @@
                     <div class="col-4">
                         <div class="p-2 border rounded" data-bs-toggle="popover" title="Total Hourly Cost"
                             data-bs-content="The exact sum of what it costs to keep the farm powered and operational for one hour. <br><b>Calculation:</b> ${{ '%.2f'|format(results.hourly_energy_cost) }} energy + ${{ '%.2f'|format(results.hourly_variable_maintenance) }} O&M + ${{ '%.2f'|format(results.hourly_opex) }} OPEX=${{ '%.2f'|format(results.total_hourly_cost) }} per hour.">
-                            <div class="text-muted small">Total/h</div>
+                            <div class="text-muted small">{{ _('total_h') }}</div>
                             <div class="text-primary fw-bold" style="font-size: 1.1rem;">${{
                                 "%.0f"|format(results.total_hourly_cost) }}</div>
                         </div>
@@ -158,7 +159,7 @@
                     <div class="col-12">
                         <div class="p-2 border rounded" data-bs-toggle="popover" title="OPC/h ($/MWh)"
                             data-bs-content="Unified real cost per MWh, combining energy and operation. <br><b>Calculation:</b> (${{ '%.2f'|format(results.total_hourly_cost) }} hourly cost) / {{ '%.4f'|format(results.total_power_consumption) }} MW=${{ '%.2f'|format(results.opc_per_h) }} per MWh.">
-                            <div class="text-muted small">OPC/h ($/MWh)</div>
+                            <div class="text-muted small">{{ _('unified_opc_h') }}</div>
                             <div class="text-success fw-bold" style="font-size: 1.3rem;" id="val_opc_per_h">${{
                                 "%.2f"|format(results.opc_per_h) }}</div>
                         </div>
@@ -171,27 +172,27 @@
 
 <div class="card mb-4">
     <div class="card-header py-2">
-        <h6 class="mb-0">Configuración de ASICs</h6>
+        <h6 class="mb-0">{{ _('asic_config') }}</h6>
     </div>
     <div class="card-body p-2">
         <div class="row g-2 mb-3">
             <div class="col-4">
                 <div class="text-center">
                     <div class="fw-bold" style="font-size: 0.9rem;">{{ results.total_asic_hashrate }}</div>
-                    <div class="text-muted small">TH/s Total</div>
+                    <div class="text-muted small">{{ _('total_th') }}</div>
                 </div>
             </div>
             <div class="col-4">
                 <div class="text-center">
                     <div class="fw-bold" style="font-size: 0.9rem;">{{ results.total_asic_units }}</div>
-                    <div class="text-muted small">Unidades</div>
+                    <div class="text-muted small">{{ _('units_label') }}</div>
                 </div>
             </div>
             <div class="col-4">
                 <div class="text-center">
                     <div class="fw-bold" style="font-size: 0.9rem;">{{ "%.4f"|format(results.network_percentage) }}%
                     </div>
-                    <div class="text-muted small">% Red</div>
+                    <div class="text-muted small">{{ _('network_percent') }}</div>
                 </div>
             </div>
         </div>
@@ -200,12 +201,12 @@
             <table class="table table-sm table-striped mb-0" style="font-size: 0.8rem;">
                 <thead>
                     <tr>
-                        <th>Modelo</th>
-                        <th>Unds</th>
-                        <th>Precio</th>
-                        <th>TH/s</th>
-                        <th>$/TH</th>
-                        <th>J/TH</th>
+                        <th>{{ _('model_short') }}</th>
+                        <th>{{ _('unds_short') }}</th>
+                        <th>{{ _('price_short') }}</th>
+                        <th>{{ _('th_s_short') }}</th>
+                        <th>{{ _('usd_th_short') }}</th>
+                        <th>{{ _('j_th_short') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -227,20 +228,20 @@
 
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-gradient bg-primary text-white py-2">
-        <h6 class="mb-0">Proyección 8 años</h6>
+        <h6 class="mb-0">{{ _('projections_8_years') }}</h6>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm table-hover mb-0" style="font-size: 1.0rem;">
                 <thead class="table-dark">
                     <tr>
-                        <th class="text-center">Año</th>
-                        <th class="text-center">Dificultad</th>
-                        <th class="text-center">Prod. (BTC)</th>
-                        <th class="text-center">Prod. (USD)</th>
-                        <th class="text-center">Costo prod. (1 BTC)</th>
-                        <th class="text-center">BTC / MWh</th>
-                        <th class="text-center">U$D / MWh</th>
+                        <th class="text-center">{{ _('year') }}</th>
+                        <th class="text-center">{{ _('difficulty') }}</th>
+                        <th class="text-center">{{ _('btc_prod') }}</th>
+                        <th class="text-center">{{ _('mining_rev') }}</th>
+                        <th class="text-center">{{ _('cost_per_btc_label') }}</th>
+                        <th class="text-center">{{ _('btc_mwh') }}</th>
+                        <th class="text-center">{{ _('usd_mwh') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -279,16 +280,17 @@
         <div class="card shadow-sm border-0 h-100 overflow-hidden">
             <div class="card-header bg-body-secondary py-2">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="small fw-semibold text-secondary"><i class="bi bi-calendar3"></i> PROYECCIÓN DE
-                        AMORTIZACIÓN</span>
+                    <span class="small fw-semibold text-secondary"><i class="bi bi-calendar3"></i> {{
+                        _('amortization_projection') }}</span>
                     <div class="d-flex align-items-center gap-2">
                         <button type="button"
                             class="btn btn-sm btn-outline-secondary border-0 shadow-none opacity-75 p-0"
-                            data-bs-toggle="modal" data-bs-target="#depreciationModal" title="¿Cómo se calcula?">
+                            data-bs-toggle="modal" data-bs-target="#depreciationModal"
+                            title="{{ _('how_calculated') }}">
                             <i class="bi bi-question-circle"></i>
                         </button>
                         <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">
-                            {{ results.depreciation_summary.depreciation_years }} años
+                            {{ results.depreciation_summary.depreciation_years }} {{ _('year') }}s
                         </span>
                     </div>
                 </div>
@@ -298,13 +300,15 @@
                     <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem;">
                         <thead>
                             <tr class="table-group-divider">
-                                <th class="text-center py-2 text-secondary"><i class="bi bi-hash"></i> Año</th>
-                                <th class="text-end py-2 text-secondary"><i class="bi bi-arrow-down-circle"></i>
-                                    Dep. Anual</th>
-                                <th class="text-end py-2 text-secondary"><i class="bi bi-layers"></i> Dep. Acum.
+                                <th class="text-center py-2 text-secondary"><i class="bi bi-hash"></i> {{ _('year') }}
                                 </th>
-                                <th class="text-end py-2 text-secondary"><i class="bi bi-cash-stack"></i> Valor
-                                    Residual</th>
+                                <th class="text-end py-2 text-secondary"><i class="bi bi-arrow-down-circle"></i>
+                                    {{ _('annual_dep') }}</th>
+                                <th class="text-end py-2 text-secondary"><i class="bi bi-layers"></i> {{ _('accum_dep')
+                                    }}
+                                </th>
+                                <th class="text-end py-2 text-secondary"><i class="bi bi-cash-stack"></i> {{
+                                    _('residual_value') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -324,8 +328,9 @@
                         <tfoot class="border-top">
                             <tr class="align-middle">
                                 <th class="text-start ps-3 py-2" colspan="2">
-                                    <span class="text-secondary small fw-normal d-block">Base Depreciable</span>
-                                    Inversión (ASICs + Gen + Infra)
+                                    <span class="text-secondary small fw-normal d-block">{{ _('depreciable_base')
+                                        }}</span>
+                                    {{ _('investment_base') }}
                                 </th>
                                 <th class="text-end fw-bold pe-3 py-2 text-secondary-emphasis" colspan="2"
                                     style="font-size: 1rem;">
@@ -342,28 +347,28 @@
     <div class="col-md-5 mb-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header py-2 bg-gradient bg-secondary text-white">
-                <h6 class="mb-0">Detalle de Otros Ingresos</h6>
+                <h6 class="mb-0">{{ _('other_incomes_summary') }}</h6>
             </div>
             <div class="card-body p-0 d-flex flex-column h-100">
                 <!-- Sección Cobros Únicos -->
                 <div class="px-3 py-2 border-bottom bg-light bg-opacity-50">
-                    <span class="fw-bold small text-uppercase text-secondary" style="letter-spacing: 1px;">Cobros
-                        Únicos (Fees)</span>
+                    <span class="fw-bold small text-uppercase text-secondary" style="letter-spacing: 1px;">{{
+                        _('unique_fees') }}</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0" style="font-size: 1rem;">
                         <tbody>
                             <tr>
-                                <td class="ps-3 py-2 border-0">Setup Fees</td>
+                                <td class="ps-3 py-2 border-0">{{ _('setup_fees') }}</td>
                                 <td class="text-end fw-bold py-2 border-0">{{
                                     "${:,.2f}".format(results.other_incomes.setup_fees) }}</td>
-                                <td class="text-muted border-0 small py-2">Cobro único</td>
+                                <td class="text-muted border-0 small py-2">{{ _('unique_charge_msg') }}</td>
                             </tr>
                             <tr>
-                                <td class="ps-3 py-2">Disconnect Fees</td>
+                                <td class="ps-3 py-2">{{ _('disconnect_fees') }}</td>
                                 <td class="text-end fw-bold py-2">{{
                                     "${:,.2f}".format(results.other_incomes.disconnect_fees) }}</td>
-                                <td class="text-muted small py-2">Final contrato</td>
+                                <td class="text-muted small py-2">{{ _('contract_end_msg') }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -371,29 +376,31 @@
 
                 <!-- Sección Garantía y Rendimientos -->
                 <div class="px-3 py-2 border-bottom border-top bg-light bg-opacity-50">
-                    <span class="fw-bold small text-uppercase text-secondary" style="letter-spacing: 1px;">Garantía
-                        y Rendimientos</span>
+                    <span class="fw-bold small text-uppercase text-secondary" style="letter-spacing: 1px;">{{
+                        _('warranty_performance') }}</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0" style="font-size: 1rem;">
                         <tbody>
                             <tr>
-                                <td class="ps-3 py-2 border-0">Depósito en Garantía</td>
+                                <td class="ps-3 py-2 border-0">{{ _('warranty_deposit') }}</td>
                                 <td class="text-end fw-bold py-2 border-0">{{
                                     "${:,.2f}".format(results.other_incomes.warranty_deposit) }}</td>
-                                <td class="text-muted border-0 small py-2">Retornable</td>
+                                <td class="text-muted border-0 small py-2">{{ _('refundable_msg') }}</td>
                             </tr>
                             <tr style="background-color: rgba(25, 135, 84, 0.08);">
-                                <td class="ps-3 py-2 text-success-emphasis fw-medium">Interés Mensual</td>
+                                <td class="ps-3 py-2 text-success-emphasis fw-medium">{{ _('monthly_interest_label') }}
+                                </td>
                                 <td class="text-end text-success fw-bold py-2">{{
                                     "${:,.2f}".format(results.other_incomes.monthly_warranty_interest) }}</td>
-                                <td class="text-muted small py-2">Recurrente</td>
+                                <td class="text-muted small py-2">{{ _('recurrent_msg') }}</td>
                             </tr>
                             <tr style="background-color: rgba(25, 135, 84, 0.08);">
-                                <td class="ps-3 py-2 text-success-emphasis fw-medium">Interés Anual</td>
+                                <td class="ps-3 py-2 text-success-emphasis fw-medium">{{ _('annual_interest_label') }}
+                                </td>
                                 <td class="text-end text-success fw-bold py-2">{{
                                     "${:,.2f}".format(results.other_incomes.annual_warranty_interest) }}</td>
-                                <td class="text-muted small py-2">Proyectado</td>
+                                <td class="text-muted small py-2">{{ _('projected_msg') }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -410,61 +417,59 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <div class="modal-header bg-body-secondary py-2 border-0">
                 <h6 class="modal-title fw-bold text-secondary-emphasis" id="depreciationModalLabel">
-                    <i class="bi bi-info-circle-fill"></i> Cálculo de Depreciación
+                    <i class="bi bi-info-circle-fill"></i> {{ _('depreciation_calc') }}
                 </h6>
                 <button type="button" class="btn-close small" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body pb-3">
-                <p class="small text-secondary mb-3">Modelo de <strong>Depreciación Lineal</strong> para la
-                    amortización contable de los equipos.</p>
+                <p class="small text-secondary mb-3">{{ _('linear_dep_msg') }}</p>
                 <div class="bg-body-tertiary p-3 rounded-3 mb-3 border">
                     <ul class="list-unstyled mb-0 small">
                         <li class="mb-2 d-flex justify-content-between">
-                            <span class="text-secondary">Dep. Anual:</span>
+                            <span class="text-secondary">{{ _('annual_dep') }}:</span>
                             <span class="fw-medium">Inversión / Años</span>
                         </li>
                         <li class="mb-2 d-flex justify-content-between">
-                            <span class="text-secondary">Dep. Acumulada:</span>
+                            <span class="text-secondary">{{ _('accum_dep') }}:</span>
                             <span class="fw-medium">Suma hasta la fecha</span>
                         </li>
                         <li class="d-flex justify-content-between">
-                            <span class="text-secondary">Valor Residual:</span>
+                            <span class="text-secondary">{{ _('residual_value') }}:</span>
                             <span class="fw-medium">Inversión - Dep. Acum.</span>
                         </li>
                     </ul>
                 </div>
                 <div class="p-2 border-start border-3 border-secondary bg-body-secondary rounded-end small">
-                    <i class="bi bi-exclamation-circle text-secondary me-1"></i> Al finalizar la vida útil, el valor
-                    se mantiene en $0.
+                    <i class="bi bi-exclamation-circle text-secondary me-1"></i> {{ _('book_value_zero_msg') }}
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-sm btn-outline-secondary px-4"
-                    data-bs-dismiss="modal">Entendido</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary px-4" data-bs-dismiss="modal">{{
+                    _('understood') }}</button>
             </div>
         </div>
     </div>
 </div>
 
-<h5 class="mb-3"><i class="bi bi-graph-up-arrow"></i> Proyecciones Financieras</h5>
+<h5 class="mb-3"><i class="bi bi-graph-up-arrow"></i> {{ _('financial_projections') }}</h5>
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-gradient bg-dark text-white py-2">
-        <h6 class="mb-0">Ingresos y Gastos (8 años)</h6>
+        <h6 class="mb-0">{{ _('income_expenses_8y') }}</h6>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm table-hover mb-0" style="font-size: 0.9rem;">
                 <thead class="table-dark">
                     <tr>
-                        <th class="text-center">Año</th>
+                        <th class="text-center">{{ _('year') }}</th>
                         <th class="text-end">BTC</th>
-                        <th class="text-end">Ingresos</th>
-                        <th class="text-end text-danger">Elec+O&M</th>
-                        <th class="text-end text-danger">OPEX</th>
-                        <th class="text-end text-success">Garant.</th>
-                        <th class="text-end">Bruta</th>
-                        <th class="text-end fw-bold">Neta</th>
-                        <th class="text-center">Margen</th>
+                        <th class="text-end">{{ _('mining_rev') }}</th>
+                        <th class="text-end text-danger">{{ _('elec_om') }}</th>
+                        <th class="text-end text-danger">{{ _('opex_fixed') }}</th>
+                        <th class="text-end text-success">{{ _('warranty_income') }}</th>
+                        <th class="text-end">{{ _('gross_profit') }}</th>
+                        <th class="text-end fw-bold">{{ _('net_profit_short') }}</th>
+                        <th class="text-center">{{ _('margin') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -497,12 +502,12 @@
     </div>
 </div>
 
-<h5 class="mb-3"><i class="bi bi-speedometer2"></i> Métricas Críticas</h5>
+<h5 class="mb-3"><i class="bi bi-speedometer2"></i> {{ _('critical_metrics') }}</h5>
 <div class="row g-2 mb-4">
     <div class="col-4">
-        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="ROI Total"
+        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="{{ _('roi_total') }}"
             data-bs-content="(Ganancia Neta Total / Inversión Inicial) * 100. Porcentaje de retorno sobre el capital invertido. <br><b>Ejemplo:</b> Si inviertes $100k y ganas $150k netos, el ROI es 150%.">
-            <div class="text-muted small mb-1">ROI Total</div>
+            <div class="text-muted small mb-1">{{ _('roi_total') }}</div>
             <div class="fw-bold {% if results.roi > 100 %}text-success{% else %}text-primary{% endif %}"
                 style="font-size: 1.1rem;">{{ "%.1f"|format(results.roi) }}%</div>
         </div>
@@ -515,39 +520,46 @@
         </div>
     </div>
     <div class="col-4">
-        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="Costo Prod. (1 BTC)"
+        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover"
+            title="{{ _('cost_per_btc_label') }}"
             data-bs-content="(Costo Electricidad + OPEX) / BTC Generados. Promedio de costo operativo por bitcoin. <br><b>Ejemplo:</b> Si gastaste $40k en total para minar 1 BTC, el costo es $40,000.">
-            <div class="text-muted small mb-1">Costo Prod. (1 BTC)</div>
+            <div class="text-muted small mb-1">{{ _('cost_per_btc_label') }}</div>
             <div class="text-primary fw-bold" style="font-size: 1.1rem;">${{ "{:,.0f}".format(results.cost_per_btc)
                 }}</div>
         </div>
     </div>
     <div class="col-4">
-        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="Break Even (USD)"
+        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover"
+            title="{{ _('break_even_usd') }}"
             data-bs-content="Tiempo estimado para recuperar la inversión inicial en dólares basándose en el flujo de caja promedio. <br><b>Ejemplo:</b> Si inviertes $100k y ganas $5k netos/mes, el Break Even es 20 meses.">
-            <div class="text-muted small mb-1">Break Even (USD)</div>
-            <div class="text-warning fw-bold" style="font-size: 0.9rem;">{{ results.break_even_usd }}</div>
+            <div class="text-muted small mb-1">{{ _('break_even_usd') }}</div>
+            <div class="text-warning fw-bold" style="font-size: 0.9rem;">{{ results.break_even_usd }} {{ _('months') }}
+            </div>
         </div>
     </div>
     <div class="col-4">
-        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="Break Even (BTC)"
+        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover"
+            title="{{ _('break_even_btc_metric') }}"
             data-bs-content="Tiempo estimado para recuperar la cantidad de BTC equivalente a la inversión inicial, descontando costos operativos pagados en BTC. <br><b>Ejemplo:</b> Si compraste equipos con 2 BTC, es el tiempo que tardas en tener 2 BTC netos en tu balance.">
-            <div class="text-muted small mb-1">Break Even (BTC)</div>
-            <div class="text-warning-emphasis fw-bold" style="font-size: 0.9rem;">{{ results.break_even_btc }}</div>
+            <div class="text-muted small mb-1">{{ _('break_even_btc_metric') }}</div>
+            <div class="text-warning-emphasis fw-bold" style="font-size: 0.9rem;">{{ results.break_even_btc }} {{
+                _('months') }}</div>
         </div>
     </div>
     <div class="col-4">
-        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="Resultado Neto (BTC)"
+        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover"
+            title="{{ _('net_result_btc') }}"
             data-bs-content="Sumatoria de (BTC Minados - Costos Operativos convertidos a BTC al momento del pago). <br><b>Ejemplo:</b> Minaste 1.5 BTC, pagaste 0.5 BTC en luz, el resultado neto es 1.0 BTC.">
-            <div class="text-muted small mb-1">Resultado Neto (BTC)</div>
+            <div class="text-muted small mb-1">{{ _('net_result_btc') }}</div>
             <div class="text-success fw-bold" style="font-size: 1.1rem;">{{ "%.4f"|format(results.total_net_btc) }}
                 BTC</div>
         </div>
     </div>
     <div class="col-4">
-        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover" title="Ganancia Neta (USD)"
+        <div class="card text-center p-2 shadow-sm border-0 h-100" data-bs-toggle="popover"
+            title="{{ _('net_profit_usd') }}"
             data-bs-content="Resultado final del ejercicio: Ingresos totales - Costos totales (Electricidad + OPEX). <br><b>Ejemplo:</b> Generaste $200k, gastaste $120k en total, la ganancia es $80k.">
-            <div class="text-muted small mb-1">Ganancia Neta (USD)</div>
+            <div class="text-muted small mb-1">{{ _('net_profit_usd') }}</div>
             <div class="text-success fw-bold" style="font-size: 1.1rem;">${{
                 "{:,.0f}".format(results.total_profits_usd) }}</div>
         </div>
@@ -555,12 +567,12 @@
 </div>
 
 <div class="mt-4">
-    <h5 class="mb-3"><i class="bi bi-clock-history"></i> Análisis de Disponibilidad (Downtime)</h5>
+    <h5 class="mb-3"><i class="bi bi-clock-history"></i> {{ _('downtime_analysis') }}</h5>
     <div class="row g-2 mb-4">
         <div class="col-6">
             <div class="card p-3 shadow-sm border-0 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted small">Estado de Operación</span>
+                    <span class="text-muted small">{{ _('operation_status') }}</span>
                     <span
                         class="badge {% if results.downtime_impact.uptime_percent > 95 %}bg-success{% else %}bg-warning text-dark{% endif %}">
                         {{ "%.1f"|format(results.downtime_impact.uptime_percent) }}% Uptime
@@ -570,34 +582,34 @@
                     <div class="col-6 border-end">
                         <div class="fw-bold text-success">{{ "%.1f"|format(results.downtime_impact.uptime_days_annual)
                             }}</div>
-                        <div class="x-small text-muted">Días Activos/Año</div>
+                        <div class="x-small text-muted">{{ _('active_days_year') }}</div>
                     </div>
                     <div class="col-6">
                         <div class="fw-bold text-danger">{{ "%.1f"|format(results.downtime_impact.downtime_days_annual)
                             }}</div>
-                        <div class="x-small text-muted">Días Offline/Año</div>
+                        <div class="x-small text-muted">{{ _('offline_days_year') }}</div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-6">
             <div class="card p-3 shadow-sm border-0 h-100">
-                <div class="text-muted small mb-2">Impacto Financiero Anual</div>
+                <div class="text-muted small mb-2">{{ _('annual_financial_impact') }}</div>
                 <div class="d-flex flex-column gap-1">
                     <div class="d-flex justify-content-between small">
-                        <span>Pérdida Prod. (BTC):</span>
+                        <span>{{ _('lost_prod_btc') }}:</span>
                         <span class="text-danger fw-bold">-{{ "%.6f"|format(results.downtime_impact.lost_btc_annual) }}
                             BTC</span>
                     </div>
                     <div class="d-flex justify-content-between small">
-                        <span>Ahorro Energía/O&M:</span>
+                        <span>{{ _('energy_om_savings') }}:</span>
                         <span class="text-success fw-bold">+${{
                             "{:,.0f}".format(results.downtime_impact.saved_costs_annual) }}</span>
                     </div>
                     <div class="border-top pt-1 mt-1 d-flex justify-content-between">
-                        <span class="fw-bold small">Impacto Neto:</span>
+                        <span class="fw-bold small">{{ _('net_impact') }}:</span>
                         <span class="badge bg-light text-dark border">
-                            Asimétrico (Fijos intactos)
+                            {{ _('asymmetric_msg') }}
                         </span>
                     </div>
                 </div>

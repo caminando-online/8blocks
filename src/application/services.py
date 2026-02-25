@@ -89,7 +89,13 @@ class MiningSimulationService:
         # Depreciation state
         total_asic_investment = farm.total_investment
         depreciation_years = params.depreciation_years
-        annual_depreciation_amount = total_asic_investment / Decimal(str(depreciation_years)) if depreciation_years > 0 else Decimal('0')
+        depreciation_method = getattr(params, 'depreciation_method', 'linear')
+        if depreciation_method == 'declining_balance':
+            # Double-Declining Balance rate
+            declining_rate = Decimal('2') / Decimal(str(depreciation_years)) if depreciation_years > 0 else Decimal('0')
+            annual_depreciation_amount = Decimal('0')  # Will be calculated per year
+        else:
+            annual_depreciation_amount = total_asic_investment / Decimal(str(depreciation_years)) if depreciation_years > 0 else Decimal('0')
         accumulated_depreciation = Decimal('0')
         
         simulation_block = network.current_block
@@ -188,20 +194,24 @@ class MiningSimulationService:
             if month_of_year == 11:
                 # Annual Depreciation
                 current_year_depreciation = Decimal('0')
-                if (year_idx + 1) <= depreciation_years:
-                    current_year_depreciation = annual_depreciation_amount
-                elif (year_idx + 1) == (depreciation_years + 1):
-                    # In case of non-integer years, but here it's int. 
-                    # If it was exactly depreciation_years, it's already done.
-                    pass
+                current_book_value = total_asic_investment - accumulated_depreciation
+                if (year_idx + 1) <= depreciation_years and current_book_value > 0:
+                    if depreciation_method == 'declining_balance':
+                        current_year_depreciation = current_book_value * declining_rate
+                        # Don't depreciate below zero
+                        current_year_depreciation = min(current_year_depreciation, current_book_value)
+                    else:
+                        current_year_depreciation = annual_depreciation_amount
                 
                 accumulated_depreciation += current_year_depreciation
                 book_value = max(Decimal('0'), total_asic_investment - accumulated_depreciation)
 
                 total_power_mw = farm.total_consumption_mw
-                annual_mwh = total_power_mw * Decimal('24') * Decimal('365')
-                btc_per_mwh = (year_btc / annual_mwh) if annual_mwh > 0 else Decimal('0')
-                usd_per_mwh = (year_revenue / annual_mwh) if annual_mwh > 0 else Decimal('0')
+                # Efficiency should use REAL consumption (affected by uptime)
+                annual_mwh_effective = total_power_mw * uptime_ratio * Decimal('24') * Decimal('365')
+                
+                btc_per_mwh = (year_btc / annual_mwh_effective) if annual_mwh_effective > 0 else Decimal('0')
+                usd_per_mwh = (year_revenue / annual_mwh_effective) if annual_mwh_effective > 0 else Decimal('0')
                 
                 gross_profit_year = year_revenue - year_electricity
                 net_profit_year = year_revenue - year_electricity - year_opex + year_warranty
@@ -241,13 +251,19 @@ class MiningSimulationService:
                 year_halving_month = None
 
         # Filter out keys that will be added explicitly to avoid double counting
-        allowed_capex = {k: v for k, v in capex_breakdown.items() if k not in ['Total', 'ASICs', 'ASIC Investment', 'Financial Cost']}
+        # 'Financial Cost' is the key name often used in some versions, 'financing' is what we use in mining.py
+        exclude_keys = ['Total', 'ASICs', 'ASIC Investment', 'Financial Cost', 'financing']
+        allowed_capex = {k: v for k, v in capex_breakdown.items() if k not in exclude_keys}
         
-        # Calculate other capex subtotal (including Financial Cost if it was passed)
+        # Calculate other capex subtotal (including financing if it was passed)
         total_other_capex = sum(allowed_capex.values())
-        if 'Financial Cost' in capex_breakdown:
+        if 'financing' in capex_breakdown:
+            total_other_capex += capex_breakdown['financing']
+            allowed_capex['financing'] = capex_breakdown['financing']
+        elif 'Financial Cost' in capex_breakdown:
+            # Fallback for alternative key naming
             total_other_capex += capex_breakdown['Financial Cost']
-            allowed_capex['Financial Cost'] = capex_breakdown['Financial Cost']
+            allowed_capex['financing'] = capex_breakdown['Financial Cost']
 
         total_investment = farm.total_investment + total_other_capex
         total_investment_btc = total_investment / network.price_btc_usd if network.price_btc_usd > 0 else Decimal('0')
@@ -272,7 +288,7 @@ class MiningSimulationService:
         hourly_energy_cost = energy_cost_per_mwh_pure * total_power_mw
         
         total_hourly_cost = hourly_opex + hourly_energy_cost + hourly_variable_maintenance
-        opc_per_h = total_hourly_cost / total_power_mw if total_power_mw > 0 else (energy_cost_per_mwh_pure + (hourly_variable_maintenance / total_power_mw if total_power_mw > 0 else 0))
+        opc_per_h = total_hourly_cost / total_power_mw if total_power_mw > 0 else Decimal('0')
 
         cost_per_btc = (total_electricity_cost + total_opex_cost) / total_btc_generated if total_btc_generated > 0 else 0
         
@@ -287,6 +303,7 @@ class MiningSimulationService:
         self._current_year_drift = Decimal('1') 
         # We need to simulate the month-by-month profit in BTC to find BE point
         simulation_block_be = network.current_block
+        current_difficulty_be = network.difficulty
         
         for month_idx in range(params.years * 12):
             year_idx = month_idx // 12
@@ -331,7 +348,7 @@ class MiningSimulationService:
 
             # Diff change
             diff_change_pct = params.manual_difficulty_variations[year_idx % len(params.manual_difficulty_variations)]
-            current_difficulty_be = network.difficulty * ((Decimal('1') + diff_change_pct / Decimal('100')) ** (month_idx + 1))
+            current_difficulty_be = current_difficulty_be * (Decimal('1') + diff_change_pct / Decimal('100'))
             
             monthly_btc = (effective_hashrate * Decimal('1e12') * (Decimal('3600') * Decimal('24') * Decimal('30.41')) / (current_difficulty_be * Decimal(str(2**32)))) * effective_reward_be
             
@@ -367,8 +384,8 @@ class MiningSimulationService:
             'roi': float(roi),
             'cagr': float(cagr),
             'cost_per_btc': float(cost_per_btc),
-            'break_even_usd': f"{float(break_even_usd):.1f} meses" if isinstance(break_even_usd, (Decimal, float)) else break_even_usd,
-            'break_even_btc': f"{break_even_btc_month} meses" if break_even_btc_month else "N/A",
+            'break_even_usd': round(float(break_even_usd), 1) if isinstance(break_even_usd, (Decimal, float)) else break_even_usd,
+            'break_even_btc': break_even_btc_month if break_even_btc_month else "N/A",
             'farm_name': farm.name,
             'investment': total_investment,
             'total_asic_hashrate': farm.total_hashrate,
@@ -386,7 +403,7 @@ class MiningSimulationService:
                 } for item in farm.asics
             ],
             'capex_breakdown': {
-                'ASIC Investment': farm.total_investment,
+                'asic_investment': farm.total_investment,
                 **capex_breakdown,
                 'Total': total_investment
             },
