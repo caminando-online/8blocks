@@ -1,0 +1,62 @@
+<div class="tab-pane fade" id="benchmarks" role="tabpanel" aria-labelledby="benchmarks-tab">
+    <div class="container-fluid px-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ _('tab_benchmarks') }}</h5>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="filter-selected-only"
+                            onchange="renderBenchmarks()">
+                        <label class="form-check-label small fw-bold" for="filter-selected-only">Solo
+                            Seleccionados</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetAsicOverrides()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Return to default
+                    </button>
+                    <div id="scoring-explainer-trigger">
+                        <span class="badge bg-info text-dark" data-bs-toggle="popover" id="scoring-popover"
+                            title="Algoritmo de Scoring de Inversión" style="cursor: pointer;">
+                            ¿Cómo se calcula el Score? <i class="bi bi-info-circle"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="benchmarks-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">
+                                    <input class="form-check-input" type="checkbox" id="benchmark-select-all"
+                                        onclick="toggleAllBenchmarks(this.checked)">
+                                </th>
+                                <th style="cursor: pointer" onclick="sortBenchmarks('model')">{{ _('model') }} ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('cooling')">
+                                    Enfriamiento ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('price')">{{
+                                    _('price') }} ($) ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('hashrate')">{{
+                                    _('hashrate') }} (TH/s) ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('efficiency')">
+                                    J/TH ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('usdPerTh')">
+                                    $/TH ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('revenueMwh')">
+                                    USD/MWh ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('profitDaily')">
+                                    {{ _('month_net_profit') }} Día ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('payback')">
+                                    Payback (Meses) ⇅</th>
+                                <th style="cursor: pointer" class="text-center" onclick="sortBenchmarks('score')">Score
+                                    ⇅</th>
+                            </tr>
+                        </thead>
+                        <tbody id="benchmarks-tbody">
+                            <!-- Dynamic content rendered by benchmarks.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

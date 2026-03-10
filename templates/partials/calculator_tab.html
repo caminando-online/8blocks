@@ -1,0 +1,433 @@
+<div class="tab-pane fade show active" id="calculator" role="tabpanel" aria-labelledby="calculator-tab">
+    <div class="container-fluid px-4">
+        <div class="row">
+            <!-- Left Column: Variables -->
+            <div class="col-lg-6">
+                <!-- Nested Row for CAPEX, OPEX and Electricity -->
+                <div class="row g-3 mb-4">
+                    <!-- CAPEX -->
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5>{{ _('capex') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <label for="research" class="form-label small">{{ _('research') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="research"
+                                        name="research" value="0">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="asics_unit_value" class="form-label small">ASICs ($)</label>
+                                    <input type="number" class="form-control form-control-sm" id="asics_unit_value"
+                                        name="asics_unit_value" value="0" readonly>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="shelter" class="form-label small">{{ _('shelter') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="shelter"
+                                        name="shelter" value="0">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="generator" class="form-label small">{{ _('generator') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="generator"
+                                        name="generator" value="0">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="infrastructure" class="form-label small">{{ _('infrastructure')
+                                        }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="infrastructure"
+                                        name="infrastructure" value="0">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="general_expenses" class="form-label small">{{ _('general_expenses')
+                                        }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="general_expenses"
+                                        name="general_expenses" value="0">
+                                </div>
+                                <div id="other_capex">
+                                    <!-- Dynamic other fields will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addOtherCapex()">{{
+                                    _('add_other') }}</button>
+                                <div class="mb-2">
+                                    <label for="financing_rate" class="form-label small">{{ _('financing') }}</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm"
+                                        id="financing_rate" name="financing_rate" value="0">
+                                </div>
+                                <div class="mb-1 form-check">
+                                    <input type="checkbox" class="form-check-input" id="expansion_10mw"
+                                        name="expansion_10mw" value="yes">
+                                    <label class="form-check-label x-small" for="expansion_10mw">{{ _('plan_10mw')
+                                        }}</label>
+                                </div>
+                                <div class="mb-1 form-check">
+                                    <input type="checkbox" class="form-check-input" id="expansion_40mw"
+                                        name="expansion_40mw" value="yes">
+                                    <label class="form-check-label x-small" for="expansion_40mw">{{ _('plan_40mw')
+                                        }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OPEX -->
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5>{{ _('opex') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <h6><strong>{{ _('staff') }}</strong></h6>
+                                <div id="staff_fields">
+                                    <!-- Dynamic staff fields will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addStaff()">{{
+                                    _('add_staff') }}</button>
+                                <h6><strong>{{ _('services') }}</strong></h6>
+                                <div class="mb-1">
+                                    <label for="insurance" class="form-label x-small">{{ _('insurance') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="insurance"
+                                        name="insurance" value="0">
+                                </div>
+                                <div class="mb-1">
+                                    <label for="software" class="form-label x-small">{{ _('software') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="software"
+                                        name="software" value="0">
+                                </div>
+                                <div class="mb-1">
+                                    <label for="internet" class="form-label x-small">{{ _('internet') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="internet"
+                                        name="internet" value="0">
+                                </div>
+                                <div class="mb-1">
+                                    <label for="security" class="form-label x-small">{{ _('security') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="security"
+                                        name="security" value="0">
+                                </div>
+                                <div class="mb-1">
+                                    <label for="accounting" class="form-label x-small">{{ _('accounting') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="accounting"
+                                        name="accounting" value="0">
+                                </div>
+                                <div class="mb-1">
+                                    <label for="lawyer" class="form-label x-small">{{ _('lawyer') }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="lawyer" name="lawyer"
+                                        value="0">
+                                </div>
+                                <div id="service_fields">
+                                    <!-- Dynamic service fields will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addService()">{{
+                                    _('add_service') }}</button>
+                                <h6><strong>{{ _('others') }}</strong></h6>
+                                <div class="mb-1">
+                                    <label for="downtime_percent" class="form-label x-small">{{ _('downtime') }}</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm"
+                                        id="downtime_percent" name="downtime_percent" value="0">
+                                </div>
+                                <div class="mb-1">
+                                    <label for="operational_costs" class="form-label x-small">{{ _('additional_opex')
+                                        }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="operational_costs"
+                                        name="operational_costs" value="0">
+                                </div>
+                                <div id="other_fields">
+                                    <!-- Dynamic other OPEX fields will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addOtherOpex()">{{
+                                    _('add_other') }}</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Electricity -->
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5>{{ _('electricity') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="power_source" class="form-label small">{{ _('power_source') }}</label>
+                                    <select class="form-control form-control-sm" id="power_source" name="power_source"
+                                        onchange="togglePowerSource()">
+                                        <option value="">--select--</option>
+                                        <option value="Direct Energy">{{ _('direct_energy') }}</option>
+                                        <option value="Gas powered">{{ _('gas_powered') }}</option>
+                                    </select>
+                                </div>
+                                <div id="direct_energy_fields" style="visibility: hidden"></div>
+                                <div id="gas_powered_fields" style="visibility: hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ASICs (details) -->
+                <div class="mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>{{ _('asics_details') }}</h5>
+                            <a href="/update_asics" class="btn btn-warning btn-sm">{{ _('update_data') }}</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ _('model') }}</th>
+                                            <th>{{ _('units') }}</th>
+                                            <th>{{ _('price') }}</th>
+                                            <th>{{ _('hashrate') }}</th>
+                                            <th>{{ _('consumption') }}</th>
+                                            <th>$/TH</th>
+                                            <th>J/TH</th>
+                                            <th>{{ _('actions') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="asics_tbody">
+                                        <!-- Selected ASICs will be added here dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">{{ _('add_asic')
+                                }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bitcoin Variables -->
+                <div class="mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>{{ _('bitcoin_variables') }}</h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                onclick="refreshNetworkData()">{{ _('update_data') }}</button>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li><strong>{{ _('btc_price') }}:</strong> $<span id="val_btc_price"
+                                        data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
+                                <li><strong>{{ _('current_difficulty') }}:</strong> <span id="val_difficulty">{{
+                                        difficulty }}</span></li>
+                                <li><strong>{{ _('current_block') }}:</strong> <span id="val_block">{{ current_block
+                                        }}</span></li>
+                                <li><strong>{{ _('blocks_to_halving') }}:</strong> <span id="val_blocks_to_halving">{{
+                                        blocks_to_halving }}</span></li>
+                                <li><strong>{{ _('months_to_halving') }}:</strong> <span id="val_months_to_halving">{{
+                                        "%.1f"|format(months_to_halving) }}</span></li>
+                                <li><strong>{{ _('blocks_to_diff') }}:</strong> <span id="val_blocks_to_diff">{{
+                                        blocks_to_next_difficulty }}</span></li>
+                                <li><strong>{{ _('diff_adj_every') }}:</strong> 2016 Blocks</li>
+                                <li><strong>{{ _('est_diff_change') }}:</strong> <span id="val_est_diff_change">{{
+                                        "%.2f"|format(estimated_next_diff_change) }}</span>%</li>
+                                <li><strong>{{ _('avg_diff_6m') }}:</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
+                                <li><strong>{{ _('avg_diff_12m') }}:</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
+                                <li><strong>{{ _('block_reward') }}:</strong> 3.125 BTC</li>
+                            </ul>
+                            <div class="mb-3">
+                                <label for="btc_price_override" class="form-label">{{ _('price_override') }}</label>
+                                <input type="number" step="0.01" class="form-control" id="btc_price_override"
+                                    name="btc_price_override">
+                            </div>
+                            <div class="mb-3">
+                                <label for="difficulty_override" class="form-label">{{ _('diff_override') }}</label>
+                                <input type="number" step="1" class="form-control" id="difficulty_override"
+                                    name="difficulty_override">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bitcoin Price and Difficulty Projections -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5>{{ _('price_variables') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="price_method" class="form-label small">{{ _('pricing_method') }}</label>
+                                    <select class="form-control form-control-sm" id="price_method" name="price_method"
+                                        onchange="togglePriceMethod()">
+                                        <option value="manual">{{ _('manual_input') }}</option>
+                                        <option value="backlog">{{ _('backlog_based') }}</option>
+                                    </select>
+                                </div>
+                                <div id="manual_price_fields">
+                                    <p class="text-muted x-small">{{ _('est_annual_var') }}</p>
+                                    <div class="row g-1">
+                                        {% for i in range(1, 9) %}
+                                        <div class="col-6 mb-1">
+                                            <label for="manual_price_{{ i }}" class="form-label x-small">Y{{ i }}
+                                                (%)</label>
+                                            <input type="text" inputmode="decimal" class="form-control form-control-sm"
+                                                name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0.0"
+                                                onchange="syncManualPrices('{{ i }}', 'price')">
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div id="backlog_info" style="display: none;">
+                                    <div class="alert alert-info py-1 x-small mb-1">
+                                        <strong>Backlog Based:</strong> Replicates monthly floor from 2022-2025.
+                                    </div>
+                                    <div id="backlog_projection_list" class="mt-2">
+                                        <!-- Computed values -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5>{{ _('difficulty_projections') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="difficulty_method" class="form-label small">{{ _('pricing_method')
+                                        }}</label>
+                                    <select class="form-control form-control-sm" id="difficulty_method"
+                                        name="difficulty_method" onchange="toggleDifficultyMethod()">
+                                        <option value="manual">{{ _('manual_input') }}</option>
+                                        <option value="backlog">{{ _('backlog_based') }}</option>
+                                    </select>
+                                </div>
+                                <div id="difficulty_input_group">
+                                    <p class="text-muted x-small">{{ _('est_avg_monthly_change') }}</p>
+                                    <div class="row g-1" id="difficulty_fields_container">
+                                        {% for i in range(1, 9) %}
+                                        <div class="col-6 mb-1">
+                                            <label for="manual_diff_var_{{ i }}" class="form-label x-small">Y{{ i }}
+                                                (%)</label>
+                                            <input type="text" inputmode="decimal" class="form-control form-control-sm"
+                                                name="manual_diff_var_{{ i }}" id="manual_diff_var_{{ i }}" value="0.00"
+                                                onchange="debouncedCalculateResults()">
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div id="diff_backlog_msg" class="alert alert-info py-1 x-small mt-2"
+                                        style="display: none;">
+                                        <strong>Backlog Based:</strong> Valores precargados con promedios mensuales
+                                        históricos (2018-2025).
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Second Nested Row for Depreciation and Other Incomes -->
+                <div class="row g-3 mb-4">
+                    <!-- Depreciation -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>{{ _('depreciation') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="depreciation_years" class="form-label small">{{ _('period_years')
+                                        }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="depreciation_years"
+                                        name="depreciation_years" value="5" oninput="debounce(calculateResults, 500)()">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="depreciation_method" class="form-label small">{{ _('method')
+                                        }}</label>
+                                    <select class="form-control form-control-sm" id="depreciation_method"
+                                        name="depreciation_method" onchange="calculateResults()">
+                                        <option value="linear">{{ _('linear') }}</option>
+                                        <option value="declining_balance">{{ _('declining_balance') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Other Incomes -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>{{ _('other_incomes') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <!-- Left Col: Fees -->
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <label for="setup_fee_per_unit" class="form-label small">{{
+                                                _('setup_fee') }}</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                                id="setup_fee_per_unit" name="setup_fee_per_unit" value="0"
+                                                oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="disconnect_fee_per_unit" class="form-label small">{{
+                                                _('disconnect_fee')
+                                                }}</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                                id="disconnect_fee_per_unit" name="disconnect_fee_per_unit" value="0"
+                                                oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                    </div>
+                                    <!-- Right Col: Warranty -->
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <label for="power_warranty_per_unit" class="form-label small">{{
+                                                _('warranty')
+                                                }}</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                                id="power_warranty_per_unit" name="power_warranty_per_unit" value="0"
+                                                oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="power_warranty_interest_rate" class="form-label small">{{
+                                                _('interest')
+                                                }}</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                                id="power_warranty_interest_rate" name="power_warranty_interest_rate"
+                                                value="0" oninput="debounce(calculateResults, 500)()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Taxes -->
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>{{ _('taxes') }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="taxes_rate" class="form-label small">{{ _('tax_rate')
+                                        }}</label>
+                                    <input type="number" class="form-control form-control-sm" id="taxes_rate"
+                                        name="taxes_rate" disabled placeholder="{{ _('to_be_developed') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Results -->
+            <div class="col-lg-6">
+                <div id="results-container">
+                    <div class="alert alert-info">
+                        {{ _('results_placeholder') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

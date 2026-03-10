@@ -1,0 +1,18 @@
+<div class="lang-selector">
+    <a href="/set_lang/es" class="lang-btn {% if current_lang == 'es' %}active{% endif %}">ES</a>
+    <a href="/set_lang/en" class="lang-btn {% if current_lang == 'en' %}active{% endif %}">EN</a>
+    <a href="/set_lang/ru" class="lang-btn {% if current_lang == 'ru' %}active{% endif %}">RU</a>
+</div>
+<button id="theme-toggle" class="btn btn-outline-secondary" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+    <span id="theme-icon">🌙</span>
+</button>
+<script>
+    // Apply theme as soon as possible to avoid flash
+    (function () {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.setAttribute('data-bs-theme', savedTheme);
+    })();
+</script>
+<div class="mt-5">
+    <h1>{{ _('app_title') }}</h1>
+</div>

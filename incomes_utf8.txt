@@ -1,0 +1,1370 @@
+﻿commit 07971f7998ff0b775e990c582f18e482a9a0973b
+Author: caminando-online <juan.caminando.online@gmail.com>
+Date:   Tue Feb 17 02:24:26 2026 -0300
+
+    Calculadora granja V1.1
+
+diff --git a/src/application/services.py b/src/application/services.py
+index 5794ead..48345d3 100644
+--- a/src/application/services.py
++++ b/src/application/services.py
+@@ -3,7 +3,10 @@ import os
+ from decimal import Decimal
+ from typing import Dict, Any
+ from ..domain.entities import MiningFarm
+-from ..domain.value_objects import SimulationParams, BitcoinNetworkState, PriceProjectionMode, DifficultyProjectionMode, FinancialMetrics
++from ..domain.value_objects import SimulationParams, BitcoinNetworkState, PriceProjectionMode, DifficultyProjectionMode
++
++# Constants
++HOURS_PER_YEAR = Decimal('8760')
+ 
+ class MiningSimulationService:
+     def __init__(self, backlog_path: str = None, difficulty_backlog_path: str = None):
+@@ -34,14 +37,39 @@ class MiningSimulationService:
+         return self._difficulty_backlog_data
+ 
+     def calculate_results(self, farm: MiningFarm, network: BitcoinNetworkState, params: SimulationParams, capex_breakdown: Dict[str, Decimal], power_source: str = "Direct Energy") -> Dict[str, Any]:
+-        effective_hashrate = farm.total_hashrate * (Decimal('1') - params.downtime_percent / Decimal('100'))
++        uptime_ratio = Decimal('1') - (params.downtime_percent / Decimal('100'))
++        effective_hashrate = farm.total_hashrate * uptime_ratio
+         
+         daily_power_kwh = farm.total_consumption_kw * Decimal('24')
+-        daily_cost = daily_power_kwh * params.energy_cost_kwh
+-        monthly_opex = (daily_cost * Decimal('30.41')) + ((params.operational_costs_annual + params.energy_om_annual) / Decimal('12'))
++        # Electricity is a variable cost, affected by downtime
++        daily_electricity_cost = daily_power_kwh * params.energy_cost_kwh * uptime_ratio
++        monthly_electricity_cost = daily_electricity_cost * Decimal('30.41')
++        
++        # Energy O&M is considered variable (per MWh produced/consumed), 
++        # so it's also affected by downtime.
++        # However, Overhauling might be fixed. 
++        # In mining.py, energy_om_annual = om_per_mwh * farm_kw * (8760 / 1000) + overhauling.
++        # We need to separate them if we want precision, but for now, 
++        # let's assume the user provided energy_om_annual as the variable part.
++        energy_om_monthly_variable = (params.energy_om_annual / Decimal('12')) * uptime_ratio
++        
++        # Fixed OPEX is NOT reduced by downtime (staff, services, etc.)
++        monthly_opex_fixed = params.operational_costs_annual / Decimal('12')
+         
+-        # Monthly BTC production (Will be recalculated in loop as difficulty changes)
++        # Other Incomes / Fees
++        total_units = sum(item['units'] for item in farm.asics)
++        setup_fees = params.setup_fee_per_unit * Decimal(str(total_units))
++        disconnect_fees = params.disconnect_fee_per_unit * Decimal(str(total_units))
++        warranty_deposit = params.power_warranty_per_unit * Decimal(str(total_units))
++        monthly_warranty_interest = warranty_deposit * (params.power_warranty_interest_rate / Decimal('100') / Decimal('12'))
++        
++        # Simulation state
+         total_profits_usd = Decimal('0')
++        total_btc_generated = Decimal('0')
++        total_opex_cost = Decimal('0')
++        total_electricity_cost = Decimal('0')
++        total_warranty_income = Decimal('0')
++        
+         current_price = network.price_btc_usd
+         current_difficulty = network.difficulty
+         backlog = self._get_backlog_data()
+@@ -49,86 +77,74 @@ class MiningSimulationService:
+         self._current_year_drift = Decimal('1')
+         self._current_diff_year_drift = Decimal('1')
+         
+-        # 8-year monthly simulation
+         annual_results = []
+         year_btc = Decimal('0')
+         year_revenue = Decimal('0')
++        year_electricity = Decimal('0')
++        year_opex = Decimal('0')
++        year_warranty = Decimal('0')
+         year_difficulty_sum = Decimal('0')
+         year_halving_month = None
+         
++        # Depreciation state
++        total_asic_investment = farm.total_investment
++        depreciation_years = params.depreciation_years
++        annual_depreciation_amount = total_asic_investment / Decimal(str(depreciation_years)) if depreciation_years > 0 else Decimal('0')
++        accumulated_depreciation = Decimal('0')
++        
+         simulation_block = network.current_block
+         
+         for month_idx in range(params.years * 12):
+             year_idx = month_idx // 12
+             month_of_year = month_idx % 12
+             
++            # Price Projection
+             if params.price_mode == PriceProjectionMode.MANUAL:
+-                # Use provided annual price for the entire year if > 0
+-                if year_idx < len(params.manual_prices) and params.manual_prices[year_idx] > 0:
+-                    current_price = params.manual_prices[year_idx]
+-                else:
+-                    # Fallback hierarchy: Override or Current Price
+-                    current_price = network.price_btc_usd
++                # manual_prices[year_idx] is now Annual % growth
++                if month_of_year == 0:
++                    annual_growth_pct = params.manual_prices[year_idx % len(params.manual_prices)]
++                    # We could apply it once a year or spread it monthly. 
++                    # For consistency with backlog (which is monthly), we can spread it.
++                    self._current_year_drift = Decimal(str(pow(float(1 + annual_growth_pct / 100), 1/12)))
++                
++                current_price = current_price * self._current_year_drift
+             else:
+-
+-                # Backlog Based with Overrides
+                 if month_of_year == 0:
+-                    target_end_price = params.manual_prices[year_idx] if (year_idx < len(params.manual_prices) and params.manual_prices[year_idx] > 0) else current_price
+-                    
++                    target_end_price_pct = params.manual_prices[year_idx % len(params.manual_prices)]
+                     year_start_price = current_price
++                    
++                    # Backlog projections are monthly jumps.
++                    # We drift them so the annual growth matches the user's manual % target.
+                     temp_price = year_start_price
+                     for m in range(12):
+                         backlog_idx = month_idx + m
+-                        backlog_data = backlog[backlog_idx % len(backlog)]  # type: ignore
++                        backlog_data = backlog[backlog_idx % len(backlog)]
+                         cp = Decimal(str(backlog_data['change_pct']))
+                         temp_price = temp_price * (Decimal('1') + cp / Decimal('100'))
+                     
+                     natural_end_price = temp_price
++                    # User target price based on annual growth %
++                    target_end_price = year_start_price * (1 + target_end_price_pct / Decimal('100'))
++                    
+                     if natural_end_price > 0 and target_end_price > 0:
+                         drift_factor_annual = target_end_price / natural_end_price
+-                        self._current_year_drift = Decimal(str(pow(float(drift_factor_annual), 1/12)))  # type: ignore
++                        self._current_year_drift = Decimal(str(pow(float(drift_factor_annual), 1/12)))
+                     else:
+-                        self._current_year_drift = Decimal('1')  # type: ignore
+-
+-                change_pct = Decimal(str(backlog[month_idx % len(backlog)]['change_pct']))  # type: ignore
+-                current_price = current_price * (Decimal('1') + change_pct / Decimal('100')) * self._current_year_drift  # type: ignore
++                        self._current_year_drift = Decimal('1')
+ 
+-            # Difficulty Projection Logic
+-            if params.difficulty_mode == DifficultyProjectionMode.MANUAL:
+-                if year_idx < len(params.manual_difficulty_variations):
+-                    diff_change_pct = params.manual_difficulty_variations[year_idx]
+-                    current_difficulty = current_difficulty * (Decimal('1') + diff_change_pct / Decimal('100'))
+-            else:
+-                if month_of_year == 0:
+-                    target_end_diff = params.manual_difficulty_variations[year_idx] if (year_idx < len(params.manual_difficulty_variations) and params.manual_difficulty_variations[year_idx] > 0) else current_difficulty
+-                    year_start_diff = current_difficulty
+-                    temp_diff = year_start_diff
+-                    for m in range(12):
+-                        backlog_idx = month_idx + m
+-                        backlog_data = difficulty_backlog[backlog_idx % len(difficulty_backlog)]
+-                        cp = Decimal(str(backlog_data['change_pct']))
+-                        temp_diff = temp_diff * (Decimal('1') + cp / Decimal('100'))
+-                    
+-                    natural_end_diff = temp_diff
+-                    if natural_end_diff > 0 and target_end_diff > 0:
+-                        drift_factor_annual = target_end_diff / natural_end_diff
+-                        self._current_diff_year_drift = Decimal(str(pow(float(drift_factor_annual), 1/12)))
+-                    else:
+-                        self._current_diff_year_drift = Decimal('1')
++                change_pct = Decimal(str(backlog[month_idx % len(backlog)]['change_pct']))
++                current_price = current_price * (Decimal('1') + change_pct / Decimal('100')) * self._current_year_drift
+ 
+-                change_pct_diff = Decimal(str(difficulty_backlog[month_idx % len(difficulty_backlog)]['change_pct']))
+-                current_difficulty = current_difficulty * (Decimal('1') + change_pct_diff / Decimal('100')) * self._current_diff_year_drift
++            # Difficulty Projection: Uses 8 separate years of Average Monthly % variation
++            # (passed in params.manual_difficulty_variations)
++            diff_change_pct = params.manual_difficulty_variations[year_idx % len(params.manual_difficulty_variations)]
++            current_difficulty = current_difficulty * (Decimal('1') + diff_change_pct / Decimal('100'))
+ 
+-            # Determine monthly reward considering halving split
++            # Rewards and Production
+             blocks_in_month = int(144 * 30.41)
+             next_simulation_block = simulation_block + blocks_in_month
+-            
+-            # Use weighted reward if halving occurs mid-month
+-            # Find halving blocks: 840k, 1050k, 1260k
+             halving_blocks = [840000, 1050000, 1260000]
+             current_reward = self._get_reward_for_block(simulation_block)
+-            
+-            # Check if any halving block falls within this month
+             effective_reward = current_reward
+             
+             for hb in halving_blocks:
+@@ -141,97 +157,223 @@ class MiningSimulationService:
+                     break
+ 
+             simulation_block = next_simulation_block
+-
+-            # Recalculate monthly BTC production with current difficulty
+-            # Formula: (Hashrate_H_s * Seconds_in_Month) / (Difficulty * 2^32) * Reward
+             seconds_in_month = Decimal('3600') * Decimal('24') * Decimal('30.41')
+             difficulty_factor = current_difficulty * Decimal(str(2**32))
+             
+             monthly_btc = (effective_hashrate * Decimal('1e12') * seconds_in_month / difficulty_factor) * effective_reward
+-            
+             monthly_revenue = monthly_btc * current_price
+-
+-
+-            monthly_profit = monthly_revenue - monthly_opex
+             
++            # Monthly Incomes/Costs
++            # Note: energy_om_monthly_variable is added to electricity cost for consistency with the plan
++            monthly_variable_costs = monthly_electricity_cost + energy_om_monthly_variable
++            monthly_profit = monthly_revenue - monthly_variable_costs - monthly_opex_fixed + monthly_warranty_interest
++            if month_idx == 0:
++                monthly_profit += setup_fees
++            if month_idx == (params.years * 12 - 1):
++                monthly_profit += disconnect_fees
++
+             year_btc += monthly_btc
+             year_revenue += monthly_revenue
++            year_electricity += monthly_variable_costs
++            year_opex += monthly_opex_fixed
++            year_warranty += monthly_warranty_interest
+             year_difficulty_sum += current_difficulty
++            
++            total_btc_generated += monthly_btc
+             total_profits_usd += monthly_profit
++            total_electricity_cost += monthly_variable_costs
++            total_opex_cost += monthly_opex_fixed
++            total_warranty_income += monthly_warranty_interest
+ 
+-            # End of year processing
+             if month_of_year == 11:
++                # Annual Depreciation
++                current_year_depreciation = Decimal('0')
++                if (year_idx + 1) <= depreciation_years:
++                    current_year_depreciation = annual_depreciation_amount
++                elif (year_idx + 1) == (depreciation_years + 1):
++                    # In case of non-integer years, but here it's int. 
++                    # If it was exactly depreciation_years, it's already done.
++                    pass
++                
++                accumulated_depreciation += current_year_depreciation
++                book_value = max(Decimal('0'), total_asic_investment - accumulated_depreciation)
++
+                 total_power_mw = farm.total_consumption_mw
+                 annual_mwh = total_power_mw * Decimal('24') * Decimal('365')
+-                
+                 btc_per_mwh = (year_btc / annual_mwh) if annual_mwh > 0 else Decimal('0')
+                 usd_per_mwh = (year_revenue / annual_mwh) if annual_mwh > 0 else Decimal('0')
+                 
++                gross_profit_year = year_revenue - year_electricity
++                net_profit_year = year_revenue - year_electricity - year_opex + year_warranty
++                if year_idx == 0: net_profit_year += setup_fees
++                if year_idx == params.years - 1: net_profit_year += disconnect_fees
++
++                other_income_year = year_warranty
++                if year_idx == 0: other_income_year += setup_fees
++                if year_idx == params.years - 1: other_income_year += disconnect_fees
++
++                cost_per_btc_year = (year_electricity + year_opex) / year_btc if year_btc > 0 else Decimal('0')
++
+                 annual_results.append({
+                     'year': year_idx + 1,
+                     'btc_generated': year_btc,
+                     'usd_revenue': year_revenue,
++                    'other_income': other_income_year,
++                    'total_revenue': year_revenue + other_income_year,
+                     'avg_difficulty': year_difficulty_sum / Decimal('12'),
+                     'halving_month': year_halving_month,
+                     'btc_per_mwh': btc_per_mwh,
+-                    'usd_per_mwh': usd_per_mwh
++                    'usd_per_mwh': usd_per_mwh,
++                    'cost_per_btc': cost_per_btc_year,
++                    'electricity_cost': year_electricity,
++                    'opex_cost': year_opex,
++                    'warranty_income': year_warranty,
++                    'gross_profit': gross_profit_year,
++                    'net_profit': net_profit_year,
++                    'operating_margin': (net_profit_year / (year_revenue + other_income_year) * 100) if (year_revenue + other_income_year) > 0 else 0,
++                    'has_halving': year_halving_month is not None,
++                    'depreciation': current_year_depreciation,
++                    'accumulated_depreciation': accumulated_depreciation,
++                    'book_value': book_value
+                 })
+-                # Reset year accumulators
+-                year_btc = Decimal('0')
+-                year_revenue = Decimal('0')
+-                year_difficulty_sum = Decimal('0')
++                # Reset
++                year_btc, year_revenue, year_electricity, year_opex, year_warranty, year_difficulty_sum = Decimal('0'), Decimal('0'), Decimal('0'), Decimal('0'), Decimal('0'), Decimal('0')
+                 year_halving_month = None
+ 
+-        total_other_capex = sum(capex_breakdown.values())
++        # Filter out keys that will be added explicitly to avoid double counting
++        allowed_capex = {k: v for k, v in capex_breakdown.items() if k not in ['Total', 'ASICs', 'ASIC Investment', 'Financial Cost']}
++        
++        # Calculate other capex subtotal (including Financial Cost if it was passed)
++        total_other_capex = sum(allowed_capex.values())
++        if 'Financial Cost' in capex_breakdown:
++            total_other_capex += capex_breakdown['Financial Cost']
++            allowed_capex['Financial Cost'] = capex_breakdown['Financial Cost']
++
+         total_investment = farm.total_investment + total_other_capex
+-        annual_depreciation = total_investment / Decimal(str(params.depreciation_years))
+-        annual_profit_usd = total_profits_usd / Decimal(str(params.years))
++        total_investment_btc = total_investment / network.price_btc_usd if network.price_btc_usd > 0 else Decimal('0')
+         
+         roi = (total_profits_usd / total_investment * Decimal('100')) if total_investment > 0 else Decimal('0')
+         
+-        network_hashrate_th = network.difficulty * Decimal(str(2**32)) / Decimal('600') / Decimal('1e12')
+-        network_percentage = (effective_hashrate / network_hashrate_th * Decimal('100')) if network_hashrate_th > 0 else Decimal('0')
++        # CAGR calculation
++        if total_investment > 0 and total_profits_usd > 0:
++            cagr = (pow(float((total_profits_usd + total_investment) / total_investment), 1/params.years) - 1) * 100
++        else:
++            cagr = 0
+ 
+-        # Electricity summary metrics
++        # Metrics for consistency
+         energy_cost_per_mwh_pure = params.energy_cost_kwh * Decimal('1000')
+-        
+-        # Monthly base for consistency (30.41 days * 24 hours = 729.84 hours)
+         hours_per_month = Decimal('729.84')
+-        # Total OPEX for Electricity metrics includes both Project OPEX and Energy O&M
+-        total_monthly_opex = (params.operational_costs_annual + params.energy_om_annual) / Decimal('12')
+-        
+-        # Power in MW
++        total_monthly_opex = params.operational_costs_annual / Decimal('12')
+         total_power_mw = farm.total_consumption_mw
+-        
+-        # 1. OPEX Horario ($/h)
+         hourly_opex = total_monthly_opex / hours_per_month
+         
+-        # 2. Costo Energ├¡a Horario ($/h)
++        # Hourly Energy Cost + Variable O&M (Calculated at full capacity for reference metrics)
++        hourly_variable_maintenance = (params.energy_om_annual / HOURS_PER_YEAR)
+         hourly_energy_cost = energy_cost_per_mwh_pure * total_power_mw
+         
+-        # 3. Costo Total Horario ($/h)
+-        total_hourly_cost = hourly_opex + hourly_energy_cost
++        total_hourly_cost = hourly_opex + hourly_energy_cost + hourly_variable_maintenance
++        opc_per_h = total_hourly_cost / total_power_mw if total_power_mw > 0 else (energy_cost_per_mwh_pure + (hourly_variable_maintenance / total_power_mw if total_power_mw > 0 else 0))
++
++        cost_per_btc = (total_electricity_cost + total_opex_cost) / total_btc_generated if total_btc_generated > 0 else 0
++        
++        # Break Even Calculations
++        break_even_usd = total_investment / (total_profits_usd / (params.years * 12)) if total_profits_usd > 0 else "N/A"
+         
+-        # 4. OPC/h ($/MWh) - Total cost per unit of energy
+-        if total_power_mw > 0:
+-            opc_per_h = total_hourly_cost / total_power_mw
+-        else:
+-            opc_per_h = energy_cost_per_mwh_pure
++        # BTC Break Even and Net Result
++        accumulated_net_btc = Decimal('0')
++        break_even_btc_month = None
++        
++        temp_price = network.price_btc_usd
++        self._current_year_drift = Decimal('1') 
++        # We need to simulate the month-by-month profit in BTC to find BE point
++        simulation_block_be = network.current_block
++        
++        for month_idx in range(params.years * 12):
++            year_idx = month_idx // 12
++            month_of_year = month_idx % 12
++            
++            # Use same price/diff logic as the main simulation to be consistent
++            if params.price_mode == PriceProjectionMode.MANUAL:
++                if month_of_year == 0:
++                    annual_growth_pct = params.manual_prices[year_idx % len(params.manual_prices)]
++                    self._current_year_drift = Decimal(str(pow(float(1 + annual_growth_pct / 100), 1/12)))
++                temp_price = temp_price * self._current_year_drift
++            else:
++                if month_of_year == 0:
++                    target_end_price_pct = params.manual_prices[year_idx % len(params.manual_prices)]
++                    year_start_price = temp_price
++                    t_price = year_start_price
++                    for m in range(12):
++                        b_idx = month_idx + m
++                        b_data = backlog[b_idx % len(backlog)]
++                        cp = Decimal(str(b_data['change_pct']))
++                        t_price = t_price * (Decimal('1') + cp / Decimal('100'))
++                    
++                    if t_price > 0 and (year_start_price * (1 + target_end_price_pct / Decimal('100'))) > 0:
++                        drift = (year_start_price * (1 + target_end_price_pct / Decimal('100'))) / t_price
++                        self._current_year_drift = Decimal(str(pow(float(drift), 1/12)))
++                    else: self._current_year_drift = Decimal('1')
++
++                change_pct = Decimal(str(backlog[month_idx % len(backlog)]['change_pct']))
++                temp_price = temp_price * (Decimal('1') + change_pct / Decimal('100')) * self._current_year_drift
++
++            # Monthly reward logic (simplified for speed but needs to match halving)
++            blocks_in_month = int(144 * 30.41)
++            next_simulation_block_be = simulation_block_be + blocks_in_month
++            current_reward_be = self._get_reward_for_block(simulation_block_be)
++            effective_reward_be = current_reward_be
++            for hb in [840000, 1050000, 1260000]:
++                if simulation_block_be < hb <= next_simulation_block_be:
++                    pre_ratio = Decimal(hb - simulation_block_be) / Decimal(blocks_in_month)
++                    effective_reward_be = (current_reward_be * pre_ratio) + (self._get_reward_for_block(hb) * (Decimal(1) - pre_ratio))
++                    break
++            simulation_block_be = next_simulation_block_be
++
++            # Diff change
++            diff_change_pct = params.manual_difficulty_variations[year_idx % len(params.manual_difficulty_variations)]
++            current_difficulty_be = network.difficulty * ((Decimal('1') + diff_change_pct / Decimal('100')) ** (month_idx + 1))
++            
++            monthly_btc = (effective_hashrate * Decimal('1e12') * (Decimal('3600') * Decimal('24') * Decimal('30.41')) / (current_difficulty_be * Decimal(str(2**32)))) * effective_reward_be
++            
++            # Costs in BTC
++            m_costs_usd = monthly_variable_costs + monthly_opex_fixed - monthly_warranty_interest
++            if month_idx == 0: m_costs_usd -= setup_fees
++            if month_idx == (params.years * 12 - 1): m_costs_usd -= disconnect_fees
++            
++            monthly_net_btc = monthly_btc - (m_costs_usd / temp_price if temp_price > 0 else Decimal('0'))
++            accumulated_net_btc += monthly_net_btc
++            
++            if break_even_btc_month is None and accumulated_net_btc >= total_investment_btc:
++                break_even_btc_month = month_idx + 1
++
++        total_net_btc = accumulated_net_btc
+ 
+         return {
+             'annual_generation': annual_results,
+-            'daily_btc': monthly_btc / Decimal('30.41'),
+-            'daily_usd': (monthly_btc * current_price) / Decimal('30.41'), # Last month's price
+-            'daily_cost': daily_cost,
+-            'annual_profit_usd': annual_profit_usd,
++            'daily_btc': total_btc_generated / Decimal(str(params.years * 365)),
++            'daily_usd': (total_btc_generated * current_price) / Decimal(str(params.years * 365)),
++            'daily_cost': (monthly_variable_costs + monthly_opex_fixed) / Decimal('30.41'),
++            'annual_profit_usd': total_profits_usd / params.years,
+             'total_profits_usd': total_profits_usd,
+-            'annual_depreciation': annual_depreciation,
+-            'roi': roi,
++            'total_net_btc': total_net_btc,
++            'downtime_impact': {
++                'uptime_percent': Decimal('100') - params.downtime_percent,
++                'downtime_percent': params.downtime_percent,
++                'lost_btc_annual': (total_btc_generated / uptime_ratio * (params.downtime_percent / Decimal('100'))) / params.years if uptime_ratio > 0 else Decimal('0'),
++                'saved_costs_annual': (total_electricity_cost / uptime_ratio * (params.downtime_percent / Decimal('100'))) / params.years if uptime_ratio > 0 else Decimal('0'),
++                'uptime_days_annual': Decimal('365') * uptime_ratio,
++                'downtime_days_annual': Decimal('365') * (params.downtime_percent / Decimal('100'))
++            },
++            'roi': float(roi),
++            'cagr': float(cagr),
++            'cost_per_btc': float(cost_per_btc),
++            'break_even_usd': f"{float(break_even_usd):.1f} meses" if isinstance(break_even_usd, (Decimal, float)) else break_even_usd,
++            'break_even_btc': f"{break_even_btc_month} meses" if break_even_btc_month else "N/A",
+             'farm_name': farm.name,
+             'investment': total_investment,
+             'total_asic_hashrate': farm.total_hashrate,
+-            'total_asic_units': sum(item['units'] for item in farm.asics),
+-            'network_percentage': network_percentage,
++            'total_asic_units': total_units,
++            'network_percentage': (effective_hashrate / (network.difficulty * Decimal(str(2**32)) / Decimal('600') / Decimal('1e12')) * 100) if network.difficulty > 0 else 0,
+             'asics': [
+                 {
+                     'model': item['asic'].model,
+@@ -248,14 +390,27 @@ class MiningSimulationService:
+                 **capex_breakdown,
+                 'Total': total_investment
+             },
++            'other_incomes': {
++                'setup_fees': setup_fees,
++                'disconnect_fees': disconnect_fees,
++                'warranty_deposit': warranty_deposit,
++                'monthly_warranty_interest': monthly_warranty_interest,
++                'annual_warranty_interest': monthly_warranty_interest * 12
++            },
+             'energy_cost_per_mwh_pure': energy_cost_per_mwh_pure,
++            'hourly_variable_maintenance': hourly_variable_maintenance,
+             'monthly_opex': total_monthly_opex,
+             'opc_per_h': opc_per_h,
+             'hourly_opex': hourly_opex,
+             'hourly_energy_cost': hourly_energy_cost,
+             'total_hourly_cost': total_hourly_cost,
+             'total_power_consumption': total_power_mw,
+-            'power_source': power_source
++            'power_source': power_source,
++            'depreciation_summary': {
++                'total_investment': total_asic_investment,
++                'depreciation_years': depreciation_years,
++                'annual_amount': annual_depreciation_amount
++            }
+         }
+ 
+     def _get_reward_for_block(self, block: int) -> Decimal:
+diff --git a/src/domain/value_objects.py b/src/domain/value_objects.py
+index 9b333bc..153d6de 100644
+--- a/src/domain/value_objects.py
++++ b/src/domain/value_objects.py
+@@ -77,3 +77,8 @@ class SimulationParams:
+     difficulty_mode: DifficultyProjectionMode = DifficultyProjectionMode.MANUAL
+     manual_prices: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
+     manual_difficulty_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
++    # Other Incomes / Fees
++    setup_fee_per_unit: Decimal = Decimal('0')
++    disconnect_fee_per_unit: Decimal = Decimal('0')
++    power_warranty_per_unit: Decimal = Decimal('0')
++    power_warranty_interest_rate: Decimal = Decimal('0')
+
+commit f8b2645304c0f0412c6969e0ec1f942e0a1a18cc
+Author: caminando-online <juan.caminando.online@gmail.com>
+Date:   Thu Feb 12 14:49:00 2026 -0300
+
+    Version 1.0: Implementation of 8-year financial projections, other incomes (setup/disconnect/warranty), and total UI/UX redesign of results section (Electricity Grid, Critical Metrics, Formatting Improvements)
+
+diff --git a/src/presentation/routes/mining.py b/src/presentation/routes/mining.py
+index 4125f00..2b108e1 100644
+--- a/src/presentation/routes/mining.py
++++ b/src/presentation/routes/mining.py
+@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify  # type: ignore
+ from decimal import Decimal
+ from ..schemas.mining import SimulationRequest  # type: ignore
+ from ...domain.entities import MiningFarm  # type: ignore
+-from ...domain.value_objects import ASIC, BitcoinNetworkState, SimulationParams, PriceProjectionMode  # type: ignore
++from ...domain.value_objects import ASIC, BitcoinNetworkState, SimulationParams, PriceProjectionMode, DifficultyProjectionMode  # type: ignore
+ from ...application.services import MiningSimulationService  # type: ignore
+ from ...infrastructure.repositories import JsonASICRepository  # type: ignore
+ from ...infrastructure.external_apis import ExternalBitcoinApiRepository  # type: ignore
+@@ -46,6 +46,8 @@ def home():
+                           months_to_halving=network_state.months_to_halving,
+                           blocks_to_next_difficulty=network_state.blocks_to_next_difficulty,
+                           estimated_next_diff_change=network_state.estimated_next_difficulty_change,
++                          price_backlog=simulation_service._get_backlog_data(),
++                          difficulty_backlog=simulation_service._get_difficulty_backlog_data(),
+                           avg_change_6m=1.4,
+                           avg_change_12m=1.3,
+                           avg_change_24m=1.9,
+@@ -239,8 +241,14 @@ def calculate():
+             operational_costs_annual=opex_breakdown['total_annual'],
+             depreciation_years=int(data.get('depreciation_years', '3')),
+             price_mode=PriceProjectionMode(data.get('price_method', 'manual')),
++            difficulty_mode=DifficultyProjectionMode(data.get('difficulty_method', 'manual')),
+             manual_prices=[Decimal(_clean_currency(data.get(f'manual_price_{i}' if data.get('price_method') == 'manual' else f'backlog_price_{i}', '0'))) for i in range(1, 9)],
+-            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}', '0'))) for i in range(1, 9)]
++            manual_difficulty_variations=[Decimal(_clean_currency(data.get(f'manual_diff_var_{i}' if data.get('difficulty_method') == 'manual' else f'backlog_diff_var_{i}', '0'))) for i in range(1, 9)],
++            # Other Incomes
++            setup_fee_per_unit=Decimal(_clean_currency(data.get('setup_fee_per_unit', '0'))),
++            disconnect_fee_per_unit=Decimal(_clean_currency(data.get('disconnect_fee_per_unit', '0'))),
++            power_warranty_per_unit=Decimal(_clean_currency(data.get('power_warranty_per_unit', '0'))),
++            power_warranty_interest_rate=Decimal(_clean_currency(data.get('power_warranty_interest_rate', '0')))
+         )
+ 
+         
+diff --git a/templates/index.html b/templates/index.html
+index 665f178..5cf700b 100644
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -207,255 +207,354 @@
+             <!-- Calculator Tab -->
+             <!-- Calculator Tab -->
+             <div class="tab-pane fade show active" id="calculator" role="tabpanel" aria-labelledby="calculator-tab">
+-                <div class="container">
++                <div class="container-fluid px-4">
+                 <form method="POST">
+-                    <!-- CAPEX -->
+                     <div class="row">
+-                        <div class="col-12 mb-4">
+-                            <div class="card h-100">
+-                                <div class="card-header">
+-                                    <h5>CAPEX (Capital Expenditures)</h5>
+-                                </div>
+-                                <div class="card-body">
+-                                    <div class="mb-3">
+-                                        <label for="research" class="form-label">Research (USD)</label>
+-                                        <input type="number" class="form-control" id="research" name="research" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="asics_unit_value" class="form-label">ASICs ($)</label>
+-                                        <input type="number" class="form-control" id="asics_unit_value" name="asics_unit_value" value="0" readonly>
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="shelter" class="form-label">Shelter (USD)</label>
+-                                        <input type="number" class="form-control" id="shelter" name="shelter" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="generator" class="form-label">Generator (USD)</label>
+-                                        <input type="number" class="form-control" id="generator" name="generator" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="infrastructure" class="form-label">Infrastructure (USD)</label>
+-                                        <input type="number" class="form-control" id="infrastructure" name="infrastructure" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="general_expenses" class="form-label">General Expenses (USD)</label>
+-                                        <input type="number" class="form-control" id="general_expenses" name="general_expenses" value="0">
+-                                    </div>
+-                                    <div id="other_capex">
+-                                        <!-- Dynamic other fields will be added here -->
+-                                    </div>
+-                                    <button type="button" class="btn btn-secondary mb-3" onclick="addOtherCapex()">Add Other</button>
+-                                    <div class="mb-3">
+-                                        <label for="financing_rate" class="form-label">Financing Rate (%)</label>
+-                                        <input type="number" step="0.01" class="form-control" id="financing_rate" name="financing_rate" value="0">
+-                                    </div>
+-                                    <div class="mb-3 form-check">
+-                                        <input type="checkbox" class="form-check-input" id="expansion_10mw" name="expansion_10mw" value="yes">
+-                                        <label class="form-check-label" for="expansion_10mw">Plan expansion to 10 MW</label>
+-                                    </div>
+-                                    <div class="mb-3 form-check">
+-                                        <input type="checkbox" class="form-check-input" id="expansion_40mw" name="expansion_40mw" value="yes">
+-                                        <label class="form-check-label" for="expansion_40mw">Plan expansion to 40 MW</label>
++                        <!-- Left Column: Variables -->
++                        <div class="col-lg-6">
++                            <!-- Nested Row for CAPEX, OPEX and Electricity -->
++                            <div class="row g-3 mb-4">
++                                <!-- CAPEX -->
++                                <div class="col-md-4">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>CAPEX (Capital Expenditures)</h5>
++                                        </div>
++                                        <div class="card-body">
++                                            <div class="mb-2">
++                                                <label for="research" class="form-label small">Research (USD)</label>
++                                                <input type="number" class="form-control form-control-sm" id="research" name="research" value="0">
++                                            </div>
++                                            <div class="mb-2">
++                                                <label for="asics_unit_value" class="form-label small">ASICs ($)</label>
++                                                <input type="number" class="form-control form-control-sm" id="asics_unit_value" name="asics_unit_value" value="0" readonly>
++                                            </div>
++                                            <div class="mb-2">
++                                                <label for="shelter" class="form-label small">Shelter (USD)</label>
++                                                <input type="number" class="form-control form-control-sm" id="shelter" name="shelter" value="0">
++                                            </div>
++                                            <div class="mb-2">
++                                                <label for="generator" class="form-label small">Generator (USD)</label>
++                                                <input type="number" class="form-control form-control-sm" id="generator" name="generator" value="0">
++                                            </div>
++                                            <div class="mb-2">
++                                                <label for="infrastructure" class="form-label small">Infrastructure (USD)</label>
++                                                <input type="number" class="form-control form-control-sm" id="infrastructure" name="infrastructure" value="0">
++                                            </div>
++                                            <div class="mb-2">
++                                                <label for="general_expenses" class="form-label small">General (USD)</label>
++                                                <input type="number" class="form-control form-control-sm" id="general_expenses" name="general_expenses" value="0">
++                                            </div>
++                                            <div id="other_capex">
++                                                <!-- Dynamic other fields will be added here -->
++                                            </div>
++                                            <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addOtherCapex()">Add Other</button>
++                                            <div class="mb-2">
++                                                <label for="financing_rate" class="form-label small">Financing (%)</label>
++                                                <input type="number" step="0.01" class="form-control form-control-sm" id="financing_rate" name="financing_rate" value="0">
++                                            </div>
++                                            <div class="mb-1 form-check">
++                                                <input type="checkbox" class="form-check-input" id="expansion_10mw" name="expansion_10mw" value="yes">
++                                                <label class="form-check-label x-small" for="expansion_10mw">Plan 10 MW</label>
++                                            </div>
++                                            <div class="mb-1 form-check">
++                                                <input type="checkbox" class="form-check-input" id="expansion_40mw" name="expansion_40mw" value="yes">
++                                                <label class="form-check-label x-small" for="expansion_40mw">Plan 40 MW</label>
++                                            </div>
++                                        </div>
+                                     </div>
+                                 </div>
+-                            </div>
+-                        </div>
+-                    </div>
+ 
+-                    <!-- ASICs (details) -->
+-                    <div class="row">
+-                        <div class="col-12 mb-4">
+-                            <div class="card h-100">
+-                                <div class="card-header">
+-                                    <h5>ASICs (Details)</h5>
+-                                    <a href="/update_asics" class="btn btn-warning btn-sm">Actualizar Datos</a>
++                                <!-- OPEX -->
++                                <div class="col-md-4">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>OPEX (Operating Expenses)</h5>
++                                        </div>
++                                        <div class="card-body">
++                                            <h6><strong>Staff</strong></h6>
++                                            <div id="staff_fields">
++                                                <!-- Dynamic staff fields will be added here -->
++                                            </div>
++                                            <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addStaff()">Add Staff</button>
++                                            <h6><strong>Services</strong></h6>
++                                            <div class="mb-1">
++                                                <label for="insurance" class="form-label x-small">Insurance (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="insurance" name="insurance" value="0">
++                                            </div>
++                                            <div class="mb-1">
++                                                <label for="software" class="form-label x-small">Software (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="software" name="software" value="0">
++                                            </div>
++                                            <div class="mb-1">
++                                                <label for="internet" class="form-label x-small">Internet (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="internet" name="internet" value="0">
++                                            </div>
++                                            <div class="mb-1">
++                                                <label for="security" class="form-label x-small">Security (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="security" name="security" value="0">
++                                            </div>
++                                            <div class="mb-1">
++                                                <label for="accounting" class="form-label x-small">Accounting (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="accounting" name="accounting" value="0">
++                                            </div>
++                                            <div class="mb-1">
++                                                <label for="lawyer" class="form-label x-small">Lawyer (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="lawyer" name="lawyer" value="0">
++                                            </div>
++                                            <div id="service_fields">
++                                                <!-- Dynamic service fields will be added here -->
++                                            </div>
++                                            <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addService()">Add Service</button>
++                                            <h6><strong>Others</strong></h6>
++                                            <div class="mb-1">
++                                                <label for="downtime_percent" class="form-label x-small">Downtime (%)</label>
++                                                <input type="number" step="0.01" class="form-control form-control-sm" id="downtime_percent" name="downtime_percent" value="0">
++                                            </div>
++                                            <div class="mb-1">
++                                                <label for="operational_costs" class="form-label x-small">Additional (USD/mo)</label>
++                                                <input type="number" class="form-control form-control-sm" id="operational_costs" name="operational_costs" value="0">
++                                            </div>
++                                            <div id="other_fields">
++                                                <!-- Dynamic other OPEX fields will be added here -->
++                                            </div>
++                                            <button type="button" class="btn btn-secondary btn-sm mb-2" onclick="addOtherOpex()">Add Other</button>
++                                        </div>
++                                    </div>
+                                 </div>
+-                                <div class="card-body">
+-                                    <table class="table table-bordered">
+-                                        <thead>
+-                                            <tr>
+-                                                <th>Modelo</th>
+-                                                <th>Unidades</th>
+-                                                <th>Precio ($)</th>
+-                                                <th>Hashrate (TH/s)</th>
+-                                                <th>Consumo (W)</th>
+-                                                <th>$/TH</th>
+-                                                <th>J/TH</th>
+-                                                <th>Acciones</th>
+-                                            </tr>
+-                                        </thead>
+-                                        <tbody id="asics_tbody">
+-                                            <!-- Selected ASICs will be added here dynamically -->
+-                                        </tbody>
+-                                    </table>
+-                                    <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">Agregar ASIC</button>
++
++                                <!-- Electricity -->
++                                <div class="col-md-4">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>Electricity</h5>
++                                        </div>
++                                        <div class="card-body">
++                                            <div class="mb-3">
++                                                <label for="power_source" class="form-label small">Power Source</label>
++                                                <select class="form-control form-control-sm" id="power_source" name="power_source" onchange="togglePowerSource()">
++                                                    <option value="">--select--</option>
++                                                    <option value="Direct Energy">Direct Energy</option>
++                                                    <option value="Gas powered">Gas powered</option>
++                                                </select>
++                                            </div>
++                                            <div id="direct_energy_fields" style="visibility: hidden">
++                                            </div>
++                                            <div id="gas_powered_fields" style="visibility: hidden">
++                                            </div>
++                                        </div>
++                                    </div>
+                                 </div>
+                             </div>
+-                        </div>
+-                    </div>
+ 
+-                    <!-- Electricity -->
+-                    <div class="row">
+-                        <div class="col-12 mb-4">
+-                            <div class="card h-100">
+-                                <div class="card-header">
+-                                    <h5>Electricity</h5>
+-                                </div>
+-                                <div class="card-body">
+-                                    <div class="mb-3">
+-                                        <label for="power_source" class="form-label">Power Source</label>
+-                                        <select class="form-control" id="power_source" name="power_source" onchange="togglePowerSource()">
+-                                            <option value="">--select--</option>
+-                                            <option value="Direct Energy">Direct Energy</option>
+-                                            <option value="Gas powered">Gas powered</option>
+-                                        </select>
++                            <!-- ASICs (details) -->
++                            <div class="mb-4">
++                                <div class="card h-100">
++                                    <div class="card-header">
++                                        <h5>ASICs (Details)</h5>
++                                        <a href="/update_asics" class="btn btn-warning btn-sm">Actualizar Datos</a>
+                                     </div>
+-                                    <div id="direct_energy_fields" style="visibility: hidden">
+-                                    </div>
+-                                    <div id="gas_powered_fields" style="visibility: hidden">
++                                    <div class="card-body">
++                                        <div class="table-responsive">
++                                            <table class="table table-bordered">
++                                                <thead>
++                                                    <tr>
++                                                        <th>Modelo</th>
++                                                        <th>Unidades</th>
++                                                        <th>Precio ($)</th>
++                                                        <th>Hashrate (TH/s)</th>
++                                                        <th>Consumo (W)</th>
++                                                        <th>$/TH</th>
++                                                        <th>J/TH</th>
++                                                        <th>Acciones</th>
++                                                    </tr>
++                                                </thead>
++                                                <tbody id="asics_tbody">
++                                                    <!-- Selected ASICs will be added here dynamically -->
++                                                </tbody>
++                                            </table>
++                                        </div>
++                                        <button type="button" class="btn btn-primary mt-3" onclick="addAsicRow()">Agregar ASIC</button>
+                                     </div>
+                                 </div>
+                             </div>
+-                        </div>
+-                    </div>
+ 
+-                    <!-- OPEX -->
+-                    <div class="row">
+-                        <div class="col-12 mb-4">
+-                            <div class="card h-100">
+-                                <div class="card-header">
+-                                    <h5>OPEX (Operating Expenses)</h5>
+-                                </div>
+-                                <div class="card-body">
+-                                    <h6><strong>Staff</strong></h6>
+-                                    <div id="staff_fields">
+-                                        <!-- Dynamic staff fields will be added here -->
+-                                    </div>
+-                                    <button type="button" class="btn btn-secondary mb-3" onclick="addStaff()">Add Staff</button>
+-                                    <h6><strong>Services</strong></h6>
+-                                    <div class="mb-3">
+-                                        <label for="insurance" class="form-label">Insurance (USD/month)</label>
+-                                        <input type="number" class="form-control" id="insurance" name="insurance" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="software" class="form-label">Software Licenses (USD/month)</label>
+-                                        <input type="number" class="form-control" id="software" name="software" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="internet" class="form-label">Internet (USD/month)</label>
+-                                        <input type="number" class="form-control" id="internet" name="internet" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="security" class="form-label">Security (USD/month)</label>
+-                                        <input type="number" class="form-control" id="security" name="security" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="accounting" class="form-label">Accounting (USD/month)</label>
+-                                        <input type="number" class="form-control" id="accounting" name="accounting" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="lawyer" class="form-label">Lawyer (USD/month)</label>
+-                                        <input type="number" class="form-control" id="lawyer" name="lawyer" value="0">
+-                                    </div>
+-                                    <div id="service_fields">
+-                                        <!-- Dynamic service fields will be added here -->
+-                                    </div>
+-                                    <button type="button" class="btn btn-secondary mb-3" onclick="addService()">Add Service</button>
+-                                    <h6><strong>Others</strong></h6>
+-                                    <div class="mb-3">
+-                                        <label for="downtime_percent" class="form-label">Downtime (%)</label>
+-                                        <input type="number" step="0.01" class="form-control" id="downtime_percent" name="downtime_percent" value="0">
+-                                    </div>
+-                                    <div class="mb-3">
+-                                        <label for="operational_costs" class="form-label">Additional Operational Costs (USD/month)</label>
+-                                        <input type="number" class="form-control" id="operational_costs" name="operational_costs" value="0">
++
++                            <!-- Bitcoin Variables -->
++                            <div class="mb-4">
++                                <div class="card h-100">
++                                    <div class="card-header d-flex justify-content-between align-items-center">
++                                        <h5>Bitcoin Variables</h5>
++                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="refreshNetworkData()">Actualizar Datos</button>
+                                     </div>
+-                                    <div id="other_fields">
+-                                        <!-- Dynamic other OPEX fields will be added here -->
++                                    <div class="card-body">
++                                        <ul class="list-unstyled">
++                                            <li><strong>BTC Price:</strong> $<span id="val_btc_price" data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
++                                            <li><strong>Current Difficulty:</strong> <span id="val_difficulty">{{ difficulty }}</span></li>
++                                            <li><strong>Current Block:</strong> <span id="val_block">{{ current_block }}</span></li>
++                                            <li><strong>Blocks to Next Halving:</strong> <span id="val_blocks_to_halving">{{ blocks_to_halving }}</span></li>
++                                            <li><strong>Months to Next Halving:</strong> <span id="val_months_to_halving">{{ "%.1f"|format(months_to_halving) }}</span></li>
++                                            <li><strong>Blocks to Next Difficulty Adjustment:</strong> <span id="val_blocks_to_diff">{{ blocks_to_next_difficulty }}</span></li>
++                                            <li><strong>Difficulty Adjustments Every:</strong> 2016 Blocks</li>
++                                            <li><strong>Estimated Next Difficulty Change:</strong> <span id="val_est_diff_change">{{ "%.2f"|format(estimated_next_diff_change) }}</span>%</li>
++                                            <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
++                                            <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
++                                            <li><strong>Avg Monthly Difficulty Change (24m):</strong> {{ "%.2f"|format(avg_change_24m) }}%</li>
++                                            <li><strong>Avg Monthly Difficulty Change (36m):</strong> {{ "%.2f"|format(avg_change_36m) }}%</li>
++                                            <li><strong>Avg Monthly Difficulty Change (48m):</strong> {{ "%.2f"|format(avg_change_48m) }}%</li>
++                                            <li><strong>Block Reward:</strong> 3.125 BTC</li>
++                                        </ul>
++                                        <div class="mb-3">
++                                            <label for="btc_price_override" class="form-label">BTC Price Override (USD) - Leave blank for real-time</label>
++                                            <input type="number" step="0.01" class="form-control" id="btc_price_override" name="btc_price_override">
++                                        </div>
++                                        <div class="mb-3">
++                                            <label for="difficulty_override" class="form-label">Difficulty Override - Leave blank for real-time</label>
++                                            <input type="number" step="1" class="form-control" id="difficulty_override" name="difficulty_override">
++                                        </div>
+                                     </div>
+-                                    <button type="button" class="btn btn-secondary mb-3" onclick="addOtherOpex()">Add Other OPEX</button>
+                                 </div>
+                             </div>
+-                        </div>
+-                    </div>
+ 
+-                    <!-- Bitcoin Variables -->
+-                    <div class="row">
+-                        <div class="col-12 mb-4">
+-                            <div class="card h-100">
+-                                <div class="card-header d-flex justify-content-between align-items-center">
+-                                    <h5>Bitcoin Variables</h5>
+-                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="refreshNetworkData()">Actualizar Datos</button>
+-                                </div>
+-                                <div class="card-body">
+-                                    <ul class="list-unstyled">
+-                                        <li><strong>BTC Price:</strong> $<span id="val_btc_price" data-raw="{{ btc_price }}">{{ btc_price }}</span></li>
+-                                        <li><strong>Current Difficulty:</strong> <span id="val_difficulty">{{ difficulty }}</span></li>
+-                                        <li><strong>Current Block:</strong> <span id="val_block">{{ current_block }}</span></li>
+-                                        <li><strong>Blocks to Next Halving:</strong> <span id="val_blocks_to_halving">{{ blocks_to_halving }}</span></li>
+-                                        <li><strong>Months to Next Halving:</strong> <span id="val_months_to_halving">{{ "%.1f"|format(months_to_halving) }}</span></li>
+-                                        <li><strong>Blocks to Next Difficulty Adjustment:</strong> <span id="val_blocks_to_diff">{{ blocks_to_next_difficulty }}</span></li>
+-                                        <li><strong>Difficulty Adjustments Every:</strong> 2016 Blocks</li>
+-                                        <li><strong>Estimated Next Difficulty Change:</strong> <span id="val_est_diff_change">{{ "%.2f"|format(estimated_next_diff_change) }}</span>%</li>
+-                                        <li><strong>Avg Monthly Difficulty Change (6m):</strong> {{ "%.2f"|format(avg_change_6m) }}%</li>
+-                                        <li><strong>Avg Monthly Difficulty Change (12m):</strong> {{ "%.2f"|format(avg_change_12m) }}%</li>
+-                                        <li><strong>Avg Monthly Difficulty Change (24m):</strong> {{ "%.2f"|format(avg_change_24m) }}%</li>
+-                                        <li><strong>Avg Monthly Difficulty Change (36m):</strong> {{ "%.2f"|format(avg_change_36m) }}%</li>
+-                                        <li><strong>Avg Monthly Difficulty Change (48m):</strong> {{ "%.2f"|format(avg_change_48m) }}%</li>
+-                                        <li><strong>Block Reward:</strong> 3.125 BTC</li>
+-                                    </ul>
+-                                    <div class="mb-3">
+-                                        <label for="btc_price_override" class="form-label">BTC Price Override (USD) - Leave blank for real-time</label>
+-                                        <input type="number" step="0.01" class="form-control" id="btc_price_override" name="btc_price_override">
++                            <!-- Third Nested Row for Price and Difficulty -->
++                            <div class="row g-3 mb-4">
++                                <!-- Bitcoin Price Variables -->
++                                <div class="col-md-6">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>Bitcoin Price Variables</h5>
++                                        </div>
++                                        <div class="card-body">
++                                            <div class="mb-3">
++                                                <label for="price_method" class="form-label small">Pricing Method</label>
++                                                <select class="form-control form-control-sm" id="price_method" name="price_method" onchange="togglePriceMethod()">
++                                                    <option value="manual">Manual Input</option>
++                                                    <option value="backlog">Backlog Based</option>
++                                                </select>
++                                            </div>
++                                            <div id="manual_price_fields">
++                                                <p class="text-muted x-small">Estimated average price / year.</p>
++                                                <div class="row g-1">
++                                                    {% for i in range(1, 9) %}
++                                                    <div class="col-6 mb-1">
++                                                        <label for="manual_price_{{ i }}" class="form-label x-small">Y{{ i }}</label>
++                                                        <input type="text" class="form-control form-control-sm price-input" name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0,00" onfocus="handlePriceFocus(this)" onblur="handlePriceBlur(this)" oninput="syncManualPrices('{{ i }}', 'price')">
++                                                    </div>
++                                                    {% endfor %}
++                                                </div>
++                                            </div>
++                                            <div id="backlog_info" style="display: none;">
++                                                <div class="alert alert-info py-1 x-small mb-1">
++                                                    <strong>Backlog Based:</strong> Replicates monthly floor from 2022-2025.
++                                                </div>
++                                                <div id="backlog_projection_list" class="mt-2">
++                                                    <!-- Computed values -->
++                                                </div>
++                                            </div>
++                                        </div>
+                                     </div>
+-                                    <div class="mb-3">
+-                                        <label for="difficulty_override" class="form-label">Difficulty Override - Leave blank for real-time</label>
+-                                        <input type="number" step="1" class="form-control" id="difficulty_override" name="difficulty_override">
++                                </div>
++
++                                <!-- Bitcoin Difficulty Projections -->
++                                <div class="col-md-6">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>Difficulty Projections</h5>
++                                        </div>
++                                        <div class="card-body">
++                                            <div class="mb-3">
++                                                <label for="difficulty_method" class="form-label small">Projection Method</label>
++                                                <select class="form-control form-control-sm" id="difficulty_method" name="difficulty_method" onchange="toggleDifficultyMethod()">
++                                                    <option value="manual">Manual Input</option>
++                                                    <option value="backlog">Backlog Based</option>
++                                                </select>
++                                            </div>
++                                            <div id="manual_difficulty_fields">
++                                                <p class="text-muted x-small">Estimated <strong>avg monthly change (%)</strong> / year.</p>
++                                                <div class="row g-1">
++                                                    {% for i in range(1, 9) %}
++                                                    <div class="col-6 mb-1">
++                                                        <label for="manual_diff_var_{{ i }}" class="form-label x-small">Y{{ i }} (%)</label>
++                                                        <input type="number" step="0.01" class="form-control form-control-sm" name="manual_diff_var_{{ i }}" id="manual_diff_var_{{ i }}" value="0.00" oninput="debounce(calculateResults, 500)()">
++                                                    </div>
++                                                    {% endfor %}
++                                                </div>
++                                            </div>
++                                            <div id="difficulty_backlog_info" style="display: none;">
++                                                <div class="alert alert-info py-1 x-small mb-1">
++                                                    <strong>Backlog Based:</strong> Replicates monthly difficulty variations from 2018-2025.
++                                                </div>
++                                                <div id="difficulty_backlog_projection_list" class="mt-2">
++                                                    <!-- Computed values -->
++                                                </div>
++                                            </div>
++                                        </div>
+                                     </div>
+                                 </div>
+                             </div>
+-                        </div>
+-                    </div>
+ 
+-                    <!-- Bitcoin Price Variables -->
+-                    <div class="row">
+-                        <div class="col-12 mb-4">
+-                            <div class="card h-100">
+-                                <div class="card-header">
+-                                    <h5>Bitcoin Price Variables</h5>
+-                                </div>
+-                                <div class="card-body">
+-                                    <div class="mb-3">
+-                                        <label for="price_method" class="form-label">Pricing Method</label>
+-                                        <select class="form-control" id="price_method" name="price_method" onchange="togglePriceMethod()">
+-                                            <option value="manual">Manual Input</option>
+-                                            <option value="backlog">Backlog Based</option>
+-                                        </select>
+-                                    </div>
+-                                    <div id="manual_price_fields">
+-                                        <p class="text-muted small">Enter the estimated average price for each year.</p>
+-                                        <div class="row">
+-                                            {% for i in range(1, 9) %}
+-                                            <div class="col-md-3 mb-2">
+-                                                <label for="manual_price_{{ i }}" class="form-label small">Year {{ i }}</label>
+-                                                <input type="text" class="form-control form-control-sm price-input" name="manual_price_{{ i }}" id="manual_price_{{ i }}" value="0,00" onfocus="handlePriceFocus(this)" onblur="handlePriceBlur(this)" oninput="syncManualPrices('{{ i }}', 'price')">
++                            <!-- Second Nested Row for Depreciation and Other Incomes -->
++                            <div class="row g-3 mb-4">
++                                <!-- Depreciation -->
++                                <div class="col-md-6">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>Depreciation</h5>
++                                        </div>
++                                        <div class="card-body">
++                                            <div class="mb-3">
++                                                <label for="depreciation_years" class="form-label small">Period (Years)</label>
++                                                <input type="number" class="form-control form-control-sm" id="depreciation_years" name="depreciation_years" value="3">
++                                            </div>
++                                            <div class="mb-3">
++                                                <label for="depreciation_method" class="form-label small">Method</label>
++                                                <select class="form-control form-control-sm" id="depreciation_method" name="depreciation_method">
++                                                    <option value="linear">Linear</option>
++                                                    <option value="declining">Declining Balance</option>
++                                                </select>
+                                             </div>
+-                                            {% endfor %}
+                                         </div>
+                                     </div>
+-                                    <div id="backlog_info" style="display: none;">
+-                                        <div class="alert alert-info py-2 small mb-2">
+-                                            <strong>Backlog Based:</strong> This mode will replicate the monthly price floor movements from 2022-2025 starting from the current price.
++                                </div>
++
++                                <!-- Other Incomes -->
++                                <div class="col-md-6">
++                                    <div class="card h-100">
++                                        <div class="card-header">
++                                            <h5>Other Incomes</h5>
+                                         </div>
+-                                        <div id="backlog_projection_list" class="mt-3">
+-                                            <!-- Computed yearly prices and variations will appear here -->
++                                        <div class="card-body">
++                                            <div class="row g-2">
++                                                <!-- Left Col: Fees -->
++                                                <div class="col-6">
++                                                    <div class="mb-2">
++                                                        <label for="setup_fee_per_unit" class="form-label small">Setup (USD/u)</label>
++                                                        <input type="number" step="0.01" class="form-control form-control-sm" id="setup_fee_per_unit" name="setup_fee_per_unit" value="0" oninput="debounce(calculateResults, 500)()">
++                                                    </div>
++                                                    <div class="mb-2">
++                                                        <label for="disconnect_fee_per_unit" class="form-label small">Disconnect (USD/u)</label>
++                                                        <input type="number" step="0.01" class="form-control form-control-sm" id="disconnect_fee_per_unit" name="disconnect_fee_per_unit" value="0" oninput="debounce(calculateResults, 500)()">
++                                                    </div>
++                                                </div>
++                                                <!-- Right Col: Warranty -->
++                                                <div class="col-6">
++                                                    <div class="mb-2">
++                                                        <label for="power_warranty_per_unit" class="form-label small">Warranty (USD/u)</label>
++                                                        <input type="number" step="0.01" class="form-control form-control-sm" id="power_warranty_per_unit" name="power_warranty_per_unit" value="0" oninput="debounce(calculateResults, 500)()">
++                                                    </div>
++                                                    <div class="mb-2">
++                                                        <label for="power_warranty_interest_rate" class="form-label small">Interest (%)</label>
++                                                        <input type="number" step="0.01" class="form-control form-control-sm" id="power_warranty_interest_rate" name="power_warranty_interest_rate" value="0" oninput="debounce(calculateResults, 500)()">
++                                                    </div>
++                                                </div>
++                                            </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+-                    </div>
+ 
++<<<<<<< Updated upstream
+                     <!-- Bitcoin Difficulty Projections -->
+                     <div class="row">
+                         <div class="col-12 mb-4">
+@@ -498,14 +597,16 @@
+                                         </select>
+                                     </div>
+                                 </div>
++=======
++                        <!-- Right Column: Results -->
++                        <div class="col-lg-6">
++                            <div id="results-container">
++                                <!-- Results will be loaded here -->
++>>>>>>> Stashed changes
+                             </div>
+                         </div>
+                     </div>
+                 </form>
+-
+-                <div id="results-container">
+-                    <!-- Results will be loaded here -->
+-                </div>
+                 </div> <!-- End Container -->
+             </div> <!-- End Calculator Tab Pane -->
+ 
+@@ -561,106 +662,13 @@
+         </div>
+     </div>
+ 
++    <!-- Data for JavaScript from Backend -->
+     <!-- Data for JavaScript from Backend -->
+     <script id="price-backlog-data" type="application/json">
+-        {{ [
+-          {"year": 2018, "month": 1, "change_pct": -25.36},
+-          {"year": 2018, "month": 2, "change_pct": 14.02},
+-          {"year": 2018, "month": 3, "change_pct": -36.63},
+-          {"year": 2018, "month": 4, "change_pct": 35.63},
+-          {"year": 2018, "month": 5, "change_pct": -17.56},
+-          {"year": 2018, "month": 6, "change_pct": -15.22},
+-          {"year": 2018, "month": 7, "change_pct": 21.44},
+-          {"year": 2018, "month": 8, "change_pct": -7.52},
+-          {"year": 2018, "month": 9, "change_pct": -8.17},
+-          {"year": 2018, "month": 10, "change_pct": -3.89},
+-          {"year": 2018, "month": 11, "change_pct": -37.36},
+-          {"year": 2018, "month": 12, "change_pct": -11.11},
+-          {"year": 2019, "month": 1, "change_pct": -10.45},
+-          {"year": 2019, "month": 2, "change_pct": 10.10},
+-          {"year": 2019, "month": 3, "change_pct": 7.44},
+-          {"year": 2019, "month": 4, "change_pct": 27.26},
+-          {"year": 2019, "month": 5, "change_pct": 60.98},
+-          {"year": 2019, "month": 6, "change_pct": 26.74},
+-          {"year": 2019, "month": 7, "change_pct": -4.83},
+-          {"year": 2019, "month": 8, "change_pct": -7.65},
+-          {"year": 2019, "month": 9, "change_pct": -15.17},
+-          {"year": 2019, "month": 10, "change_pct": 10.11},
+-          {"year": 2019, "month": 11, "change_pct": -18.32},
+-          {"year": 2019, "month": 12, "change_pct": -3.37},
+-          {"year": 2020, "month": 1, "change_pct": 30.49},
+-          {"year": 2020, "month": 2, "change_pct": -8.52},
+-          {"year": 2020, "month": 3, "change_pct": -24.69},
+-          {"year": 2020, "month": 4, "change_pct": 30.25},
+-          {"year": 2020, "month": 5, "change_pct": 6.53},
+-          {"year": 2020, "month": 6, "change_pct": -10.35},
+-          {"year": 2020, "month": 7, "change_pct": 22.69},
+-          {"year": 2020, "month": 8, "change_pct": -1.01},
+-          {"year": 2020, "month": 9, "change_pct": -10.01},
+-          {"year": 2020, "month": 10, "change_pct": 30.18},
+-          {"year": 2020, "month": 11, "change_pct": 43.15},
+-          {"year": 2020, "month": 12, "change_pct": 54.21},
+-          {"year": 2021, "month": 1, "change_pct": 12.86},
+-          {"year": 2021, "month": 2, "change_pct": 35.12},
+-          {"year": 2021, "month": 3, "change_pct": 18.45},
+-          {"year": 2021, "month": 4, "change_pct": -1.83},
+-          {"year": 2021, "month": 5, "change_pct": -35.52},
+-          {"year": 2021, "month": 6, "change_pct": -5.65},
+-          {"year": 2021, "month": 7, "change_pct": 25.06},
+-          {"year": 2021, "month": 8, "change_pct": 13.76},
+-          {"year": 2021, "month": 9, "change_pct": -9.30},
+-          {"year": 2021, "month": 10, "change_pct": 27.78},
+-          {"year": 2021, "month": 11, "change_pct": -6.54},
+-          {"year": 2021, "month": 12, "change_pct": -18.93},
+-          {"year": 2022, "month": 1, "change_pct": -16.7},
+-          {"year": 2022, "month": 2, "change_pct": 12.2},
+-          {"year": 2022, "month": 3, "change_pct": 5.4},
+-          {"year": 2022, "month": 4, "change_pct": -17.3},
+-          {"year": 2022, "month": 5, "change_pct": -15.6},
+-          {"year": 2022, "month": 6, "change_pct": -37.9},
+-          {"year": 2022, "month": 7, "change_pct": 16.9},
+-          {"year": 2022, "month": 8, "change_pct": -14.0},
+-          {"year": 2022, "month": 9, "change_pct": -3.1},
+-          {"year": 2022, "month": 10, "change_pct": 5.5},
+-          {"year": 2022, "month": 11, "change_pct": -16.2},
+-          {"year": 2022, "month": 12, "change_pct": -3.6},
+-          {"year": 2023, "month": 1, "change_pct": 39.8},
+-          {"year": 2023, "month": 2, "change_pct": 0.0},
+-          {"year": 2023, "month": 3, "change_pct": 23.0},
+-          {"year": 2023, "month": 4, "change_pct": 2.8},
+-          {"year": 2023, "month": 5, "change_pct": -6.9},
+-          {"year": 2023, "month": 6, "change_pct": 12.0},
+-          {"year": 2023, "month": 7, "change_pct": -4.1},
+-          {"year": 2023, "month": 8, "change_pct": -11.3},
+-          {"year": 2023, "month": 9, "change_pct": 4.0},
+-          {"year": 2023, "month": 10, "change_pct": 28.5},
+-          {"year": 2023, "month": 11, "change_pct": 8.8},
+-          {"year": 2023, "month": 12, "change_pct": 12.1},
+-          {"year": 2024, "month": 1, "change_pct": 0.7},
+-          {"year": 2024, "month": 2, "change_pct": 43.8},
+-          {"year": 2024, "month": 3, "change_pct": 16.6},
+-          {"year": 2024, "month": 4, "change_pct": -15.0},
+-          {"year": 2024, "month": 5, "change_pct": 11.4},
+-          {"year": 2024, "month": 6, "change_pct": -7.1},
+-          {"year": 2024, "month": 7, "change_pct": 3.1},
+-          {"year": 2024, "month": 8, "change_pct": -8.8},
+-          {"year": 2024, "month": 9, "change_pct": 7.4},
+-          {"year": 2024, "month": 10, "change_pct": 10.9},
+-          {"year": 2024, "month": 11, "change_pct": 37.4},
+-          {"year": 2024, "month": 12, "change_pct": -3.1},
+-          {"year": 2025, "month": 1, "change_pct": 5.0},
+-          {"year": 2025, "month": 2, "change_pct": 8.0},
+-          {"year": 2025, "month": 3, "change_pct": 12.0},
+-          {"year": 2025, "month": 4, "change_pct": -10.0},
+-          {"year": 2025, "month": 5, "change_pct": 15.0},
+-          {"year": 2025, "month": 6, "change_pct": -5.0},
+-          {"year": 2025, "month": 7, "change_pct": 2.0},
+-          {"year": 2025, "month": 8, "change_pct": -9.0},
+-          {"year": 2025, "month": 9, "change_pct": 6.0},
+-          {"year": 2025, "month": 10, "change_pct": 15.0},
+-          {"year": 2025, "month": 11, "change_pct": -20.0},
+-          {"year": 2025, "month": 12, "change_pct": 10.0}
+-        ]|tojson|safe }}
++        {{ price_backlog|tojson|safe }}
++    </script>
++    <script id="difficulty-backlog-data" type="application/json">
++        {{ difficulty_backlog|tojson|safe }}
+     </script>
+     <script id="asic-data" type="application/json">
+         {{ asics_data|tojson|safe }}
+@@ -724,26 +732,110 @@
+             el.value = formatDisplayCurrency(parseFloat(el.value) || parseDisplayCurrency(el.value));
+         }
+ 
+-        function togglePriceMethod() {
+-            const method = document.getElementById('price_method').value;
+-            const manualFields = document.getElementById('manual_price_fields');
+-            const backlogInfo = document.getElementById('backlog_info');
++        function toggleDifficultyMethod() {
++            const method = document.getElementById('difficulty_method').value;
++            const manualFields = document.getElementById('manual_difficulty_fields');
++            const backlogInfo = document.getElementById('difficulty_backlog_info');
+             
+             if (method === 'manual') {
+                 manualFields.style.display = 'block';
+                 backlogInfo.style.display = 'none';
+             } else {
+-                manualFields.style.display = 'block'; // Keep it visible but maybe dimmed or informative? 
+-                // Wait, user said "debe ser visible debajo del recuadro azul... los precios calculados"
+-                // Actually I should show the calculated prices in the manual fields OR in a separate list.
+-                // Manual fields are easier to see. But user asked for them BELOW the blue box.
+                 manualFields.style.display = 'none';
+                 backlogInfo.style.display = 'block';
+-                updateBacklogProjections();
++                updateDifficultyBacklogProjections();
++            }
++            debounce(calculateResults, 500)();
++        }
++
++        const DIFFICULTY_BACKLOG = JSON.parse(document.getElementById('difficulty-backlog-data').textContent);
++
++        function syncBacklogDifficultyModifier(year, type) {
++            const startYear = parseInt(year);
++            const overrideVal = document.getElementById('difficulty_override').value;
++            let startDiff;
++            if (overrideVal) {
++                startDiff = parseFloat(overrideVal);
++            } else {
++                const el = document.getElementById('val_difficulty');
++                startDiff = parseFloat(el.dataset.raw) || parseFloat(el.innerText);
++            }
++            
++            for (let i = startYear; i <= 8; i++) {
++                const currentDiffEl = document.getElementById(`backlog_diff_var_${i}`);
++                const currentModEl = document.getElementById(`backlog_diff_modifier_${i}`);
++                const baseVar = parseFloat(currentModEl.dataset.baseVar) || 0;
++                const prevDiff = i === 1 ? startDiff : parseFloat(document.getElementById(`backlog_diff_var_${i-1}`).dataset.absDiff);
++                
++                if (i === year) {
++                    if (type === 'price') { // Reusing 'price' for absolute value target
++                        const targetDiff = parseFloat(currentDiffEl.value) || 0;
++                        if (prevDiff > 0) {
++                            currentModEl.value = ((targetDiff / prevDiff - 1) * 100).toFixed(2);
++                        }
++                    } else {
++                        const mod = parseFloat(currentModEl.value) || 0;
++                        currentDiffEl.value = (prevDiff * (1 + mod / 100)).toExponential(2);
++                        currentDiffEl.dataset.absDiff = prevDiff * (1 + mod / 100);
++                    }
++                } else {
++                    const mod = parseFloat(document.getElementById(`backlog_diff_modifier_${i}`).value) || 0;
++                    currentDiffEl.dataset.absDiff = prevDiff * (1 + mod / 100);
++                    currentDiffEl.value = (prevDiff * (1 + mod / 100)).toExponential(2);
++                }
+             }
+             debounce(calculateResults, 500)();
+         }
+ 
++        function updateDifficultyBacklogProjections() {
++            const list = document.getElementById('difficulty_backlog_projection_list');
++            list.innerHTML = '';
++            
++            const overrideVal = document.getElementById('difficulty_override').value;
++            let currentDiff;
++            if (overrideVal) {
++                currentDiff = parseFloat(overrideVal);
++            } else {
++                const el = document.getElementById('val_difficulty');
++                currentDiff = parseFloat(el.dataset.raw) || parseFloat(el.innerText);
++            }
++
++            for (let y = 0; y < 8; y++) {
++                let yearlySum = 1;
++                for (let m = 0; m < 12; m++) {
++                    const monthIdx = y * 12 + m;
++                    const change = DIFFICULTY_BACKLOG[monthIdx % DIFFICULTY_BACKLOG.length].change_pct;
++                    yearlySum *= (1 + change / 100);
++                }
++                const baseYearlyVar = (yearlySum - 1) * 100;
++                const nextDiff = currentDiff * yearlySum;
++
++                const row = document.createElement('div');
++                row.className = 'row g-1 mb-1 align-items-center';
++                row.innerHTML = `
++                    <div class="col-2 small text-muted">Y${y+1}</div>
++                    <div class="col-5">
++                        <div class="input-group input-group-sm">
++                            <input type="number" step="0.01" class="form-control" 
++                                id="backlog_diff_modifier_${y+1}" name="backlog_diff_modifier_${y+1}" 
++                                value="${baseYearlyVar.toFixed(2)}" data-base-var="${baseYearlyVar}"
++                                oninput="syncBacklogDifficultyModifier(${y+1}, 'modifier')">
++                            <span class="input-group-text x-small">%</span>
++                        </div>
++                    </div>
++                    <div class="col-5">
++                        <input type="text" class="form-control form-control-sm text-end" 
++                            id="backlog_diff_var_${y+1}" name="backlog_diff_var_${y+1}" 
++                            value="${nextDiff.toExponential(2)}" 
++                            data-abs-diff="${nextDiff}"
++                            oninput="syncBacklogDifficultyModifier(${y+1}, 'price')">
++                    </div>
++                `;
++                list.appendChild(row);
++                currentDiff = nextDiff;
++            }
++        }
++
+         const PRICE_BACKLOG = JSON.parse(document.getElementById('price-backlog-data').textContent);
+ 
+         function syncManualPrices(year, type) {

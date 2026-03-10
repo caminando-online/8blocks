@@ -78,6 +78,8 @@ class SimulationParams:
     difficulty_mode: DifficultyProjectionMode = DifficultyProjectionMode.MANUAL
     manual_prices: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
     manual_difficulty_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 8)
+    monthly_price_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 12)
+    monthly_difficulty_variations: list[Decimal] = field(default_factory=lambda: [Decimal('0')] * 12)
     # Other Incomes / Fees
     setup_fee_per_unit: Decimal = Decimal('0')
     disconnect_fee_per_unit: Decimal = Decimal('0')

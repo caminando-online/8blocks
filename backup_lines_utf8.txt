@@ -1,0 +1,104 @@
+﻿Line 738: <!-- Second Nested Row for Depreciation and Other Incomes -->
+  733: </div>
+  734: </div>
+  735: </div>
+  736: </div>
+  737: 
+  738: <!-- Second Nested Row for Depreciation and Other Incomes -->
+  739: <div class="row g-3 mb-4">
+  740: <!-- Depreciation -->
+  741: <div class="col-md-6">
+  742: <div class="card h-100">
+  743: <div class="card-header">
+----------------------------------------
+Line 767: <!-- Other Incomes -->
+  762: </div>
+  763: </div>
+  764: </div>
+  765: </div>
+  766: 
+  767: <!-- Other Incomes -->
+  768: <div class="col-md-6">
+  769: <div class="card h-100">
+  770: <div class="card-header">
+  771: <h5>{{ _('other_incomes') }}</h5>
+  772: </div>
+----------------------------------------
+Line 778: <label for="setup_fee_per_unit" class="form-label small">{{
+  773: <div class="card-body">
+  774: <div class="row g-2">
+  775: <!-- Left Col: Fees -->
+  776: <div class="col-6">
+  777: <div class="mb-2">
+  778: <label for="setup_fee_per_unit" class="form-label small">{{
+  779: _('setup_fee') }}</label>
+  780: <input type="number" step="0.01"
+  781: class="form-control form-control-sm"
+  782: id="setup_fee_per_unit" name="setup_fee_per_unit"
+  783: value="0" oninput="debounce(calculateResults, 500)()">
+----------------------------------------
+Line 782: id="setup_fee_per_unit" name="setup_fee_per_unit"
+  777: <div class="mb-2">
+  778: <label for="setup_fee_per_unit" class="form-label small">{{
+  779: _('setup_fee') }}</label>
+  780: <input type="number" step="0.01"
+  781: class="form-control form-control-sm"
+  782: id="setup_fee_per_unit" name="setup_fee_per_unit"
+  783: value="0" oninput="debounce(calculateResults, 500)()">
+  784: </div>
+  785: <div class="mb-2">
+  786: <label for="disconnect_fee_per_unit"
+  787: class="form-label small">{{ _('disconnect_fee')
+----------------------------------------
+Line 823: <!-- Taxes -->
+  818: </div>
+  819: </div>
+  820: </div>
+  821: </div>
+  822: 
+  823: <!-- Taxes -->
+  824: <div class="row g-3 mb-4">
+  825: <div class="col-12">
+  826: <div class="card h-100">
+  827: <div class="card-header">
+  828: <h5>{{ _('taxes') }}</h5>
+----------------------------------------
+Line 828: <h5>{{ _('taxes') }}</h5>
+  823: <!-- Taxes -->
+  824: <div class="row g-3 mb-4">
+  825: <div class="col-12">
+  826: <div class="card h-100">
+  827: <div class="card-header">
+  828: <h5>{{ _('taxes') }}</h5>
+  829: </div>
+  830: <div class="card-body">
+  831: <div class="mb-3">
+  832: <label for="taxes_rate" class="form-label small">{{ _('tax_rate')
+  833: }}</label>
+----------------------------------------
+Line 832: <label for="taxes_rate" class="form-label small">{{ _('tax_rate')
+  827: <div class="card-header">
+  828: <h5>{{ _('taxes') }}</h5>
+  829: </div>
+  830: <div class="card-body">
+  831: <div class="mb-3">
+  832: <label for="taxes_rate" class="form-label small">{{ _('tax_rate')
+  833: }}</label>
+  834: <input type="number" class="form-control form-control-sm"
+  835: id="taxes_rate" name="taxes_rate" disabled
+  836: placeholder="{{ _('to_be_developed') }}">
+  837: </div>
+----------------------------------------
+Line 835: id="taxes_rate" name="taxes_rate" disabled
+  830: <div class="card-body">
+  831: <div class="mb-3">
+  832: <label for="taxes_rate" class="form-label small">{{ _('tax_rate')
+  833: }}</label>
+  834: <input type="number" class="form-control form-control-sm"
+  835: id="taxes_rate" name="taxes_rate" disabled
+  836: placeholder="{{ _('to_be_developed') }}">
+  837: </div>
+  838: </div>
+  839: </div>
+  840: </div>
+----------------------------------------

@@ -78,6 +78,7 @@ class MiningSimulationService:
         self._current_diff_year_drift = Decimal('1')
         
         annual_results = []
+        monthly_year1 = []  # Detailed monthly data for Year 1
         year_btc = Decimal('0')
         year_revenue = Decimal('0')
         year_electricity = Decimal('0')
@@ -105,7 +106,11 @@ class MiningSimulationService:
             month_of_year = month_idx % 12
             
             # Price Projection
-            if params.price_mode == PriceProjectionMode.MANUAL:
+            price_variation_applied = Decimal('0')
+            if year_idx == 0 and params.monthly_price_variations[month_of_year] != 0:
+                price_variation_applied = params.monthly_price_variations[month_of_year]
+                current_price = current_price * (Decimal('1') + price_variation_applied / Decimal('100'))
+            elif params.price_mode == PriceProjectionMode.MANUAL:
                 # manual_prices[year_idx] is now Annual % growth
                 if month_of_year == 0:
                     annual_growth_pct = params.manual_prices[year_idx % len(params.manual_prices)]
@@ -142,9 +147,13 @@ class MiningSimulationService:
                 current_price = current_price * (Decimal('1') + change_pct / Decimal('100')) * self._current_year_drift
 
             # Difficulty Projection: Uses 8 separate years of Average Monthly % variation
-            # (passed in params.manual_difficulty_variations)
-            diff_change_pct = params.manual_difficulty_variations[year_idx % len(params.manual_difficulty_variations)]
-            current_difficulty = current_difficulty * (Decimal('1') + diff_change_pct / Decimal('100'))
+            diff_variation_applied = Decimal('0')
+            if year_idx == 0 and params.monthly_difficulty_variations[month_of_year] != 0:
+                diff_variation_applied = params.monthly_difficulty_variations[month_of_year]
+                current_difficulty = current_difficulty * (Decimal('1') + diff_variation_applied / Decimal('100'))
+            else:
+                diff_variation_applied = params.manual_difficulty_variations[year_idx % len(params.manual_difficulty_variations)]
+                current_difficulty = current_difficulty * (Decimal('1') + diff_variation_applied / Decimal('100'))
 
             # Rewards and Production
             blocks_in_month = int(144 * 30.41)
@@ -190,6 +199,35 @@ class MiningSimulationService:
             total_electricity_cost += monthly_variable_costs
             total_opex_cost += monthly_opex_fixed
             total_warranty_income += monthly_warranty_interest
+
+            # Collect monthly data for Year 1
+            if year_idx == 0:
+                monthly_other_income = monthly_warranty_interest
+                if month_idx == 0:
+                    monthly_other_income += setup_fees
+                if month_idx == 11 and params.years == 1:
+                    monthly_other_income += disconnect_fees
+                monthly_total_revenue = monthly_revenue + monthly_other_income
+                monthly_ebitda = monthly_total_revenue - monthly_variable_costs - monthly_opex_fixed
+                monthly_margin = (monthly_profit / monthly_total_revenue * 100) if monthly_total_revenue > 0 else Decimal('0')
+                monthly_year1.append({
+                    'month': month_idx + 1,
+                    'btc_price': current_price,
+                    'price_variation': price_variation_applied,
+                    'difficulty': current_difficulty,
+                    'difficulty_variation': diff_variation_applied,
+                    'btc_generated': monthly_btc,
+                    'usd_revenue': monthly_revenue,
+                    'other_income': monthly_other_income,
+                    'total_revenue': monthly_total_revenue,
+                    'electricity_cost': monthly_variable_costs,
+                    'opex_cost': monthly_opex_fixed,
+                    'warranty_income': monthly_warranty_interest,
+                    'ebitda': monthly_ebitda,
+                    'net_profit': monthly_profit,
+                    'operating_margin': monthly_margin,
+                    'cost_per_btc': (monthly_variable_costs + monthly_opex_fixed) / monthly_btc if monthly_btc > 0 else Decimal('0')
+                })
 
             if month_of_year == 11:
                 # Annual Depreciation
@@ -367,6 +405,7 @@ class MiningSimulationService:
 
         return {
             'annual_generation': annual_results,
+            'monthly_year1': monthly_year1,
             'daily_btc': total_btc_generated / Decimal(str(params.years * 365)),
             'daily_usd': (total_btc_generated * current_price) / Decimal(str(params.years * 365)),
             'daily_cost': (monthly_variable_costs + monthly_opex_fixed) / Decimal('30.41'),
