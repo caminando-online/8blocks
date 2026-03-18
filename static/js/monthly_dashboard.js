@@ -1,6 +1,25 @@
 // Global state for attach/detach
 let monthlyDashboardAttached = true;
 
+// Format a raw difficulty number to a human-readable scaled string
+// e.g. 1.45e+14 → "1.4500 T", 8.2e+16 → "82.0000 P"
+function formatDifficulty(val) {
+    const tiers = [
+        { threshold: 1e18, divisor: 1e18, suffix: 'E' },
+        { threshold: 1e15, divisor: 1e15, suffix: 'P' },
+        { threshold: 1e12, divisor: 1e12, suffix: 'T' },
+        { threshold: 1e9,  divisor: 1e9,  suffix: 'G' },
+        { threshold: 1e6,  divisor: 1e6,  suffix: 'M' },
+        { threshold: 1e3,  divisor: 1e3,  suffix: 'K' },
+    ];
+    for (const t of tiers) {
+        if (val >= t.threshold) {
+            return (val / t.divisor).toFixed(4) + ' ' + t.suffix;
+        }
+    }
+    return val.toFixed(4);
+}
+
 function toggleMonthlyAttach() {
     monthlyDashboardAttached = !monthlyDashboardAttached;
     const btn = document.getElementById('monthly-attach-btn');
@@ -41,8 +60,18 @@ function renderMonthlyDashboard() {
         return;
     }
 
+    // ── Preserve global adjustment values before re-render ──
+    const savedGlobalPrice = document.getElementById('global_price_var')?.value || '';
+    const savedGlobalDiff = document.getElementById('global_diff_var')?.value || '';
+
     const data = results.monthly_year1;
     const y1 = results.annual_generation[0];
+
+    // ── Compute Y1 summary from monthly data ──
+    const y1TotalBtc = data.reduce((sum, m) => sum + m.btc_generated, 0);
+    const y1TotalRevenue = data.reduce((sum, m) => sum + m.total_revenue, 0);
+    const y1TotalNetProfit = data.reduce((sum, m) => sum + m.net_profit, 0);
+    const y1AvgMargin = data.length > 0 ? data.reduce((sum, m) => sum + m.operating_margin, 0) / data.length : 0;
 
     // ── KPIs ABOVE table ──
     let html = `
@@ -50,36 +79,31 @@ function renderMonthlyDashboard() {
             <div class="col-md-3">
                 <div class="excel-kpi-box text-center">
                     <div class="excel-kpi-label">${_('total_btc_y1') || 'Total BTC Y1'}</div>
-                    <div class="excel-kpi-value text-success">${results.monthly_year1.total_btc.toFixed(4)}</div>
+                    <div class="excel-kpi-value text-success">${y1TotalBtc.toFixed(4)}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="excel-kpi-box text-center">
                     <div class="excel-kpi-label">${_('total_revenue') || 'Total Revenue'}</div>
-                    <div class="excel-kpi-value text-primary">$${formatDisplayCurrency(results.monthly_year1.total_revenue)}</div>
+                    <div class="excel-kpi-value text-primary">$${formatDisplayCurrency(y1TotalRevenue)}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="excel-kpi-box text-center">
                     <div class="excel-kpi-label">${_('net_profit') || 'Net Profit'}</div>
-                    <div class="excel-kpi-value ${results.monthly_year1.total_net_profit >= 0 ? 'text-success' : 'text-danger'}">
-                        $${formatDisplayCurrency(results.monthly_year1.total_net_profit)}
+                    <div class="excel-kpi-value ${y1TotalNetProfit >= 0 ? 'text-success' : 'text-danger'}">
+                        $${formatDisplayCurrency(y1TotalNetProfit)}
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="excel-kpi-box text-center">
                     <div class="excel-kpi-label">${_('average_margin') || 'Average Margin'}</div>
-                    <div class="excel-kpi-value text-info">${results.monthly_year1.avg_margin.toFixed(1)}%</div>
+                    <div class="excel-kpi-value text-info">${y1AvgMargin.toFixed(1)}%</div>
                 </div>
             </div>
         </div>
 
-        <!-- Duplicated Inputs: Electricity & ASICs -->
-        <div class="row g-3 mb-4" id="md_duplicated_inputs_container">
-            ${renderDuplicatedInputs()}
-        </div>
-        
         <!-- Table Section -->
         <div class="row g-3 mb-3 align-items-center">
             <div class="col-md-2">
@@ -127,15 +151,19 @@ function renderMonthlyDashboard() {
                     <span class="small fw-bold text-muted">${_('global_adjustment') || 'Ajuste Global (Año 1):'}</span>
                     <div class="input-group input-group-sm" style="width: 160px;">
                         <span class="input-group-text">${_('price_short') || 'Precio'}</span>
-                        <input type="number" step="0.1" class="form-control text-center" id="global_price_var" placeholder="0">
+                        <input type="number" step="0.1" class="form-control text-center" id="global_price_var" placeholder="0"
+                            value="${savedGlobalPrice}"
+                            oninput="event.stopPropagation()" onchange="event.stopPropagation()">
                         <span class="input-group-text">%</span>
                     </div>
                     <div class="input-group input-group-sm" style="width: 170px;">
                         <span class="input-group-text">${_('difficulty') || 'Dificultad'}</span>
-                        <input type="number" step="0.1" class="form-control text-center" id="global_diff_var" placeholder="0">
+                        <input type="number" step="0.1" class="form-control text-center" id="global_diff_var" placeholder="0"
+                            value="${savedGlobalDiff}"
+                            oninput="event.stopPropagation()" onchange="event.stopPropagation()">
                         <span class="input-group-text">%</span>
                     </div>
-                    <button class="btn btn-sm btn-primary" onclick="applyGlobalMonthlyOverrides()">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="applyGlobalMonthlyOverrides()">
                         <i class="bi bi-check2-all"></i> ${_('apply_all') || 'Aplicar a todos'}
                     </button>
                 </div>
@@ -212,18 +240,20 @@ function renderMonthlyDashboard() {
                         <input type="number" step="0.1" class="form-control text-center py-0" 
                             name="monthly_price_var_${m.month}" 
                             value="${priceVal}" 
-                            onchange="calculateResults()"
+                            oninput="event.stopPropagation()"
+                            onchange="event.stopPropagation(); debouncedCalculateResults()"
                             style="font-size: 0.8rem; height: 24px;">
                         <span class="input-group-text py-0" style="font-size: 0.7rem;">%</span>
                     </div>
                 </td>
-                <td class="text-end font-monospace small">${m.difficulty.toExponential(2)}</td>
+                <td class="text-end font-monospace small">${formatDifficulty(m.difficulty)}</td>
                 <td class="text-center" style="width: 100px;">
                     <div class="input-group input-group-sm">
                         <input type="number" step="0.1" class="form-control text-center py-0" 
                             name="monthly_diff_var_${m.month}" 
                             value="${diffVal}" 
-                            onchange="calculateResults()"
+                            oninput="event.stopPropagation()"
+                            onchange="event.stopPropagation(); debouncedCalculateResults()"
                             style="font-size: 0.8rem; height: 24px;">
                         <span class="input-group-text py-0" style="font-size: 0.7rem;">%</span>
                     </div>
@@ -251,6 +281,11 @@ function renderMonthlyDashboard() {
                     </table>
                 </div>
             </div>
+        </div>
+
+        <!-- Duplicated Inputs: Electricity & ASICs -->
+        <div class="row g-3 mb-4" id="md_duplicated_inputs_container">
+            ${renderDuplicatedInputs()}
         </div>
     `;
 
@@ -541,7 +576,7 @@ function renderDuplicatedInputs() {
     // Read masters
     const powerSource = document.getElementById('power_source')?.value || '';
     const energyCost = document.getElementById('energy_cost_per_mwh')?.value || 0;
-    
+
     // Gas values
     const gasUnit = document.getElementById('gas_unit')?.value || 'MBTU';
     const gasPrice = document.getElementById('gas_price_per_unit')?.value || 0;
@@ -552,7 +587,7 @@ function renderDuplicatedInputs() {
     // Read ASICs
     const asicRows = Array.from(document.querySelectorAll('#asics_tbody tr[id^="asic_row_"]'));
     let asicsHtml = '';
-    
+
     // Generate inner ASIC Dropdowns like master
     const bitmain = ASIC_DATA?.filter(a => a.model.toLowerCase().includes('antminer') || a.model.includes('HOST Antminer')) || [];
     const whatsminer = ASIC_DATA?.filter(a => a.model.toLowerCase().includes('whatsminer')) || [];
@@ -677,7 +712,7 @@ function renderDuplicatedInputs() {
             </div>
         </div>
     `;
-    
+
     return html;
 }
 
@@ -686,7 +721,7 @@ function mdSyncGeneralMaster(elemId, val, isPowerSource = false) {
     const masterEl = document.getElementById(elemId);
     if (masterEl) {
         masterEl.value = val;
-        
+
         if (isPowerSource && typeof togglePowerSource === 'function') {
             togglePowerSource(); // This will regenerate the master gas fields
         }
@@ -705,7 +740,7 @@ function mdUpdateAsicMaster(idStr, field, val) {
     const masterField = document.querySelector(`#asic_row_${idStr} ${selector}`);
     if (masterField) {
         masterField.value = val;
-        
+
         // Trigger master event handlers natively so all side effects run
         if (field === 'model') {
             masterField.dispatchEvent(new Event('change'));
